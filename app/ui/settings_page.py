@@ -442,9 +442,12 @@ class SettingsPage(Page):
         from PySide6.QtWidgets import QListWidget, QListWidgetItem
         from ..paths import resource
 
-        faces = [("idle", "待机呼吸"), ("happy", "开心跃动"),
-                 ("shy", "害羞惊讶"), ("angry", "傲娇生气"),
-                 ("drag", "被拖拽悬空"), ("eat", "偷吃零食")]
+        faces = [("idle", "待机呼吸", "默认状态、无操作时"),
+                 ("happy", "开心跃动", "被摸头、收到消息/回复、心情好"),
+                 ("shy", "害羞惊讶", "被夸、被夸可爱时"),
+                 ("angry", "傲娇生气", "被凶、心情低于 35 时"),
+                 ("drag", "被拖拽悬空", "按住左键拖动挂件时"),
+                 ("eat", "偷吃零食", "右键「喂白米饭」时")]
         dlg = QDialog(self)
         dlg.setWindowTitle("所有形象 / 动作")
         dlg.resize(560, 480)
@@ -452,9 +455,10 @@ class SettingsPage(Page):
         body = QHBoxLayout()
         lst = QListWidget()
         lst.setFixedWidth(180)
-        for key, name in faces:
-            it = QListWidgetItem(name)
+        for key, name, trig in faces:
+            it = QListWidgetItem(f"{name}\n{trig}")
             it.setData(Qt.UserRole, key)
+            it.setToolTip(trig)
             lst.addItem(it)
         body.addWidget(lst)
         preview = QLabel("选一个看看")

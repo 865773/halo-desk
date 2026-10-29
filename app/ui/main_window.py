@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel,
                                QSystemTrayIcon, QVBoxLayout, QWidget)
 
 from ..automation import AutoPilot
+from .. import memory
 from ..config import CFG
 from ..hlx import HlxClient
 from ..lingjie import LingjieClient
@@ -138,13 +139,14 @@ class MainWindow(QMainWindow):
         self._build_tray()
         self.autopilot.replied.connect(self._on_pet_reply)
         self.autopilot.incoming.connect(self._on_pet_incoming)
+        self.autopilot.auth_failed.connect(self._on_auth_failed)
         self.show_page(CFG.get("general.page", "home") or "home")
         self._refresh_sidebar_status()
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
         QTimer.singleShot(2600, self._validate_logins)
         self._login_timer = QTimer(self)
-        self._login_timer.setInterval(60000)
+        self._login_timer.setInterval(30000)
         self._login_timer.timeout.connect(lambda: self._check_logins(quiet=True))
         self._login_timer.start()
         self._ui_timer = QTimer(self)
@@ -164,8 +166,49 @@ class MainWindow(QMainWindow):
         if not CFG.get("auto.pet_notify", True):
             return
         where = "葫芦侠" if platform == "hlx" else "灵芥"
-        self.pet.set_face("hello", 5000)
+        face = "happy"
+        low = ("凶", "骂", "讨厌", "滚", "烦")
+        praise = ("可爱", "喜欢", "夸", "棒", "好看")
+        if any(k in text for k in low):
+            face = "angry"
+        elif any(k in text for k in praise):
+            face = "shy"
+        elif memory.get_mood(platform) <= 35:
+            face = "angry"
+        self.pet.set_face(face, 5000)
         self.pet.say(f"{where}·{nick}：{text}", 8000)
+
+    def _on_auth_failed(self, platform: str) -> None:
+        """监听/回复时接口返回未登录：立刻清掉该平台并刷新界面。"""
+        if platform == "hlx":
+            if not CFG.get("hlx.key", ""):
+                return
+            for k in ("hlx.key", "hlx.uid", "hlx.nick", "hlx.level"):
+                CFG.set(k, "" if k.endswith("key") or k.endswith("nick") else 0)
+            name = "葫芦侠"
+        else:
+            if not CFG.get("lingjie.token", ""):
+                return
+            for k in ("lingjie.token", "lingjie.uid", "lingjie.nickname",
+                      "lingjie.level", "lingjie.exp", "lingjie.next_exp"):
+                CFG.set(k, "" if k in ("lingjie.token", "lingjie.nickname") else 0)
+            name = "灵芥"
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            CFG.set("fish.enabled", False)
+            CFG.set("auto.enabled", False)
+            try:
+                self.autopilot.stop()
+            except Exception:
+                pass
+        CFG.save()
+        self.notify_accounts()
+        try:
+            self.tray.showMessage("登录已失效",
+                                  f"{name} 登录已失效，请重新登录（记忆会保留）。",
+                                  QSystemTrayIcon.Warning, 5000)
+        except Exception:
+            pass
+        DBG.log("LOGIN", f"{name} 登录失效，已自动退出", "WARN")
 
     def _on_pet_reply(self, platform: str, nick: str, text: str) -> None:
         if self.pet is None or not self.pet.isVisible():
@@ -211,7 +254,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v7.1 · 桌面合并版")
+        ver = QLabel("v7.2 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

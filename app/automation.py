@@ -28,6 +28,11 @@ STATE_PATH = FILES_DIR / "auto_state.json"
 MAX_SEEN = 800
 
 
+def is_auth_error(err) -> bool:
+    s = str(err or "")
+    return any(k in s for k in (
+        "401", "未授权", "重新登录", "登录失效", "登录已失效", "token无效",
+        "token 无效", "token已过期", "token 已过期", "登录已过期"))
 def reply_key(platform: str, c: dict) -> str:
     """同一帖子 + 同一句话只回一次。"""
     import hashlib
@@ -275,6 +280,7 @@ class AutoPilot(QObject):
     log = Signal(str)
     replied = Signal(str, str, str)   # platform, nick, text
     incoming = Signal(str, str, str)  # platform, nick, message
+    auth_failed = Signal(str)         # platform
     state_changed = Signal()
 
     def __init__(self, app):
@@ -431,7 +437,7 @@ class AutoPilot(QObject):
             report = {"replies": [], "errors": [], "notes": []}
             self._check_reviews(record_only=report)
             self._reply_pass("hlx", report)
-            self._reply_pass("lj", report)
+            self._reply_pass("lingjie", report)
             return report
 
         from .ui.common import run_bg
@@ -692,8 +698,12 @@ class AutoPilot(QObject):
                     except Exception:
                         pass
                     report["errors"].append(f"{platform} 回复 {c['nick']} 失败：{msg}")
+                    if is_auth_error(msg):
+                        self.auth_failed.emit(platform)
         except Exception as e:  # noqa: BLE001
             report["errors"].append(f"{platform} 监听失败：{e}")
+            if is_auth_error(e):
+                self.auth_failed.emit(platform)
 
     def _compose_reply(self, platform: str, c: dict) -> tuple[str, str]:
         """返回 (回复内容, 决策理由)。"""

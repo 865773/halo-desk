@@ -194,6 +194,8 @@ class PetWindow(QWidget):
         delta = cur - self._drag_from
         if abs(delta.x()) + abs(delta.y()) > 4:
             self._moved = True
+        if self._moved and self._cur != "drag":
+            self.set_face("drag", 0)
         self.move(self._win_from + delta)
         self._place_bubble()
 
@@ -206,6 +208,7 @@ class PetWindow(QWidget):
             CFG.set("fish.pos_y", self.y())
             CFG.save()
             self._place_bubble()
+            self.reset_face()
             return
         self.pet()
 
