@@ -612,6 +612,8 @@ class AutoPilot(QObject):
         return "", ""
 
     def _send_reply(self, platform: str, c: dict, text: str) -> tuple[bool, str]:
+        from .emoji import sanitize
+        text = sanitize(text, platform)
         if platform == "hlx":
             return self.hlx.comment(c["pid"], text, c["cid"])
         return self.lj.publish_comment(c["tid"], text, c["cid"])

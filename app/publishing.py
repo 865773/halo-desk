@@ -37,8 +37,9 @@ def publish_post(platform: str, board_id: int, board_name: str,
                  title: str, content: str, make_image: bool = False,
                  img_prompt: str = "", client=None) -> tuple[bool, str]:
     """发帖入口。platform: hlx / lingjie。client 可注入（测试用）。"""
-    title = (title or "").strip()
-    content = (content or "").strip()
+    from .emoji import sanitize as _san
+    title = _san((title or "").strip(), platform)
+    content = _san((content or "").strip(), platform)
     if not board_id:
         return False, "请选择板块"
     if not title:

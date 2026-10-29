@@ -38,22 +38,32 @@ CACHE = FILES_DIR / "emoji_lingjie.json"
 
 
 def lingjie_codes() -> list[str]:
-    """优先读缓存（7 天有效），否则用兜底。"""
+    """优先读缓存（7 天有效），否则用兜底；去重、过滤非法项。"""
+    data = None
     try:
         if CACHE.exists() and time.time() - CACHE.stat().st_mtime < 7 * 86400:
             data = json.loads(CACHE.read_text("utf-8"))
-            if isinstance(data, list) and len(data) > 20:
-                return [str(x) for x in data]
     except Exception:
-        pass
-    return LJ_FALLBACK
+        data = None
+    raw = data if isinstance(data, list) and len(data) > 20 else LJ_FALLBACK
+    out, seen = [], set()
+    for c in raw:
+        s = str(c).strip()
+        if not (s.startswith("[") and s.endswith("]")) or len(s) > 9:
+            continue
+        if s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+    return out
 
 
 def refresh_lingjie(client) -> int:
     """从接口拉一次灵芥表情并缓存，返回数量。"""
     try:
-        codes = [str(e.get("code") or "") for e in client.emoji_list()]
-        codes = [c for c in codes if c.startswith("[") and c.endswith("]")]
+        codes = [str(e.get("code") or "").strip() for e in client.emoji_list()]
+        codes = [c for c in codes if c.startswith("[") and c.endswith("]") and len(c) <= 9]
+        codes = list(dict.fromkeys(codes))
         if len(codes) > 20:
             CACHE.parent.mkdir(parents=True, exist_ok=True)
             CACHE.write_text(json.dumps(codes, ensure_ascii=False), "utf-8")
@@ -73,8 +83,39 @@ def doc(platform: str) -> str:
     if platform == "hlx":
         detail = "；".join(f"{c}{HLX_MEANING.get(c, '')}" for c in items)
         return ("【表情（葫芦侠专用）】只认这一套，写成方括号，App 才会渲染成图；"
-                "别用灵芥那套的名字。\n" + detail + "\n一条最多 1~2 个，别堆。\n")
+                "不在下面列表里的一律不要写（写了会被删掉）。\n"
+                + detail + "\n一条最多 1~2 个，别堆。\n")
     lines = ["、".join(items[i:i + 16]) for i in range(0, len(items), 16)]
-    return ("【表情（灵芥专用）】只认这一套，写成方括号；别用葫芦侠那套（如 [滑稽] 在两边"
-            "图案不同，优先用下面灵芥的）。\n" + "\n".join(lines) +
-            "\n一条最多 1~2 个，别堆。\n")
+    return ("【表情（灵芥专用）】只认这一套，写成方括号；不在下面列表里的一律不要写"
+            "（写了会被删掉），也别用葫芦侠那套（两边图案不同）。\n"
+            + "\n".join(lines) + "\n一条最多 1~2 个，别堆。\n")
+
+
+_EMOJI_RE = None
+
+
+def sanitize(text: str, platform: str) -> str:
+    """删掉不属于本平台的表情（模型自创的 [xxx]），其余原样返回。"""
+    import re
+    global _EMOJI_RE
+    if not text:
+        return text
+    if _EMOJI_RE is None:
+        _EMOJI_RE = re.compile(r"\[[^\[\]\r\n]{1,8}\]")
+    allowed = set(codes(platform))
+    removed = []
+
+    def _sub(m):
+        tok = m.group(0)
+        if tok in allowed:
+            return tok
+        # 像表情的才删；普通方括号文字（如 [活动]）保留
+        if 1 <= len(tok.strip("[]")) <= 6:
+            removed.append(tok)
+            return ""
+        return tok
+
+    out = _EMOJI_RE.sub(_sub, text)
+    if removed:
+        DBG.log("EMOJI", f"{platform} 删掉无效表情：{' '.join(removed[:6])}", "WARN")
+    return out

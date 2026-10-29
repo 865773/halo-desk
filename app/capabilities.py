@@ -325,6 +325,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                 text = ""
         time.sleep(random.uniform(2.0, 5.0))
         if text:
+            from .emoji import sanitize as _san_emoji
+            text = _san_emoji(text, platform)
             ok, _m = _do_comment(platform, client, pid, text)
             if ok:
                 # 发完查一下是否立刻可见；看不到就是进审核了

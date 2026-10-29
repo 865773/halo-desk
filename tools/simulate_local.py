@@ -425,6 +425,10 @@ def main() -> int:
           "[滑稽]" in hdoc and "[狗头3]" in ldoc and "[狗头3]" not in hdoc,
           (len(emo.codes("hlx")), len(emo.codes("lingjie"))))
     check("灵芥表情是一整套", len(emo.codes("lingjie")) >= 48, len(emo.codes("lingjie")))
+    h_bad = emo.sanitize("好耶[滑稽][狗头3]", "hlx")
+    l_bad = emo.sanitize("好耶[狗头3][太开心]", "lingjie")
+    check("自创/串台表情会被删掉",
+          h_bad == "好耶[滑稽]" and l_bad == "好耶[狗头3]", (h_bad, l_bad))
 
     from app.lingjie import LingjieClient as _LJ
     hosts1 = _LJ._upload_hosts({"uploadHost": "https://qnljkj.kodo-accelerate.cn-east-1.qiniucs.com"})
