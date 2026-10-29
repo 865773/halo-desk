@@ -4,7 +4,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QCheckBox, QGridLayout, QHBoxLayout, QLabel,
-                               QMessageBox, QVBoxLayout, QWidget)
+                               QMessageBox, QProgressBar, QVBoxLayout, QWidget)
 
 from .. import memory
 from ..config import data_dir
@@ -171,18 +171,53 @@ class HomePage(Page):
 
         status = common.Card(padding=20, spacing=14)
         top2 = QHBoxLayout()
-        top2.addWidget(common.card_title("今日状态"))
+        top2.addWidget(common.card_title("心情"))
         top2.addStretch(1)
         self.mood = QLabel()
         self.mood.setObjectName("muted")
         top2.addWidget(self.mood)
         status.box.addLayout(top2)
         status.box.addWidget(common.line())
-        self.stats = QLabel("—")
-        self.stats.setWordWrap(True)
-        self.stats.setStyleSheet("font-size:13px;line-height:170%;")
-        status.box.addWidget(self.stats)
+        self.mood_bar = QProgressBar()
+        self.mood_bar.setRange(0, 100)
+        self.mood_bar.setTextVisible(False)
+        status.box.addWidget(self.mood_bar)
+        self.mood_log = QLabel("—")
+        self.mood_log.setWordWrap(True)
+        self.mood_log.setObjectName("hint")
+        status.box.addWidget(self.mood_log)
+        status.box.addWidget(common.hint("被夸、被哄会涨；被凶、被冷落会掉；"
+                                         "大约 3 小时慢慢回到平常 60。"))
         self.body.addWidget(status)
+
+        # 今日各平台小卡片
+        cards = QHBoxLayout()
+        cards.setSpacing(16)
+        self.pcards = {}
+        for p, title in (("hlx", "葫芦侠"), ("lingjie", "灵芥")):
+            c = common.Card(padding=18, spacing=8)
+            c.box.addWidget(common.card_title(f"今天在{title}"))
+            c.box.addWidget(common.line())
+            grid = QGridLayout()
+            grid.setHorizontalSpacing(18)
+            grid.setVerticalSpacing(4)
+            labels = {}
+            for i, key in enumerate(("post", "comment", "reply", "follow", "favorite")):
+                name = {"post": "发帖", "comment": "评论", "reply": "回复",
+                        "follow": "关注", "favorite": "收藏"}[key]
+                lb = QLabel("0")
+                lb.setStyleSheet("font-size:19px;font-weight:800;")
+                nm = QLabel(name)
+                nm.setObjectName("muted")
+                grid.addWidget(lb, 0, i)
+                grid.addWidget(nm, 1, i)
+                labels[key] = lb
+            c.box.addLayout(grid)
+            self.pcards[p] = labels
+            cards.addWidget(c, 1)
+        holder2 = QWidget()
+        holder2.setLayout(cards)
+        self.body.addWidget(holder2)
 
         quick = common.Card(padding=20, spacing=14)
         quick.box.addWidget(common.card_title("快捷操作"))
@@ -258,9 +293,26 @@ class HomePage(Page):
         hlx = "已登录" if cfg.get("hlx.key", "") else "未登录"
         lj = "已登录" if cfg.get("lingjie.token", "") else "未登录"
         ai = "已配置" if cfg.get("ai.key", "") else "未配置"
-        self.stats.setText(
-            f"葫芦侠：{hlx}　·　灵芥空间：{lj}　·　DeepSeek：{ai}　·　"
-            f"大肥鱼：{'运行中' if enabled else '未启用'}<br>"
-            f"今日互动：{_stats_text()}<br>"
-            f"对话次数：{cfg.get('stats.chat', 0)}")
-        self.mood.setText(f"心情：{memory.mood_label()}（{memory.get_mood()}）")
+        # 心情 + 今日各平台
+        try:
+            mood = memory.get_mood("hlx")
+            self.mood_bar.setValue(mood)
+            self.mood.setText(f"{memory.mood_label(mood, 'hlx')}（{mood}/100）")
+            logs = memory.mood_log("hlx", 3) + memory.mood_log("lingjie", 3)
+            self.mood_log.setText("　".join(x.strip() for x in logs[-4:]) or
+                                  "今天心情还挺平稳")
+        except Exception:
+            pass
+        from ..activity import ACT
+        from ..stats import today_platform
+        for p, labels in self.pcards.items():
+            counts = dict(today_platform(p))
+            try:
+                acts = ACT.today_counts(p)
+            except Exception:
+                acts = {}
+            for key, lb in labels.items():
+                n = counts.get(key, 0) or acts.get(key, 0)
+                if key == "reply":
+                    n = counts.get("reply", 0)
+                lb.setText(str(int(n or 0)))

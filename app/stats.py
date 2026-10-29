@@ -41,21 +41,33 @@ def _load() -> dict:
     return {"day": _today(), "counts": {}, "total": {}}
 
 
-def bump(kind: str, n: int = 1) -> None:
+def bump(kind: str, platform: str = "", n: int = 1) -> None:
     if kind not in KIND_LABEL:
         return
     with _LOCK:
         data = _load()
         if data.get("day") != _today():
-            data = {"day": _today(), "counts": {}, "total": data.get("total", {})}
+            data = {"day": _today(), "counts": {}, "total": data.get("total", {}),
+                    "platforms": {}}
         data.setdefault("counts", {})
         data.setdefault("total", {})
+        data.setdefault("platforms", {})
         data["counts"][kind] = int(data["counts"].get(kind, 0)) + n
         data["total"][kind] = int(data["total"].get(kind, 0)) + n
+        if platform:
+            p = data["platforms"].setdefault(platform, {})
+            p[kind] = int(p.get(kind, 0)) + n
         try:
             STATS_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=1), "utf-8")
         except Exception:
             pass
+
+
+def today_platform(platform: str) -> dict:
+    data = _load()
+    if data.get("day") != _today():
+        return {}
+    return dict((data.get("platforms") or {}).get(platform) or {})
 
 
 def today_counts() -> dict:

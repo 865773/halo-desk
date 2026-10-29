@@ -25,10 +25,6 @@ class AutoPage(Page):
         top = QHBoxLayout()
         top.addWidget(common.card_title("运行状态"))
         top.addStretch(1)
-        self.switch = QCheckBox("启用自动任务")
-        self.switch.setChecked(bool(CFG.get("auto.enabled", False)))
-        self.switch.stateChanged.connect(self.toggle)
-        top.addWidget(self.switch)
         run.box.addLayout(top)
         run.box.addWidget(common.line())
 
@@ -65,22 +61,6 @@ class AutoPage(Page):
             "只处理「接入时间点」之后的消息，回复前随机等 0–15 秒。"
             "逛社区多久一次在下面的「逛社区间隔」里设。"))
         self.body.addWidget(run)
-
-        sign = common.Card(padding=20, spacing=12)
-        stop = QHBoxLayout()
-        stop.addWidget(common.card_title("签到"))
-        stop.addStretch(1)
-        sign.box.addLayout(stop)
-        sign.box.addWidget(common.line())
-        sign.box.addWidget(common.hint(
-            "已改成每次打开程序自动检测：哪个平台今天没签到就自动补签，"
-            "不用再设定时时间。"))
-        row2 = QHBoxLayout()
-        row2.addStretch(1)
-        self.sign_state = common.muted("")
-        row2.addWidget(self.sign_state)
-        sign.box.addLayout(row2)
-        self.body.addWidget(sign)
 
         roam = common.Card(padding=20, spacing=12)
         rhead = QHBoxLayout()
@@ -146,7 +126,7 @@ class AutoPage(Page):
                            ("comment", "评论"), ("follow", "关注"),
                            ("tip", "送葫芦/芥子"), ("post", "发帖"),
                            ("signin", "签到"), ("roam", "逛社区"),
-                           ("reply", "回复"), ("vision", "看图")):
+                           ("reply", "回复")):
             cb = QCheckBox(label)
             cb.setChecked(bool(CFG.get(f"perm.{key}", key != "tip")))
             cb.stateChanged.connect(
@@ -245,8 +225,8 @@ class AutoPage(Page):
         CFG.save()
 
     def run_now(self) -> None:
-        if not CFG.get("auto.enabled", False):
-            common.toast(self.app, "先打开上面的「启用自动任务」", "warn")
+        if not CFG.get("fish.enabled", False):
+            common.toast(self.app, "先在总览打开「大肥鱼」总开关", "warn")
             return
         if not self.app.cfg.get("hlx.key", "") and not self.app.cfg.get("lingjie.token", ""):
             common.toast(self.app, "两个平台都还没登录", "warn")
@@ -265,6 +245,5 @@ class AutoPage(Page):
         ap = self.app.autopilot
         sent = int(ap.state.get("sent", 0))
         last = ap.state.get("last_signin", "") or "—"
-        self.state_lb.setText(f"已回 {sent} 条 · 签到 {last[5:] if last != '—' else '—'}")
-        self.sign_state.setText(f"今天：{'已签' if last == datetime.now().strftime('%Y-%m-%d') else '未签'}")
-        self.switch.setChecked(bool(CFG.get("auto.enabled", False)))
+        self.state_lb.setText(
+            f"已回 {sent} 条 · 总开关{'开' if CFG.get('fish.enabled', False) else '关'}")

@@ -88,10 +88,10 @@ def currency_doc(platform: str) -> str:
 
 def memory_block(uid: int = 0, platform: str = "") -> str:
     sb = []
-    mem = memory.recent(10)
+    mem = memory.recent(10, platform)
     if mem:
         sb.append("【你最近的记忆】\n" + mem)
-    life = memory.recent_life(5)
+    life = memory.recent_life(5, platform)
     if life:
         sb.append("【你今天的生活】\n" + life)
     if uid and platform:
@@ -181,7 +181,9 @@ def decide(platform: str, state: str, uid: int = 0, nick: str = "",
         try:
             if images and _perm("vision", True) and _ < 2:
                 raw = ai.chat_with_images(sys, ask + "\n【配图】已附上帖子图片。",
-                                          images, CFG.get("ai.model_basic"))
+                                          images,
+                                          CFG.get("ai.model_vision", "") or
+                                          CFG.get("ai.model_basic"))
             else:
                 raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
         except Exception as e:

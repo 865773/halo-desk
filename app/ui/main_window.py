@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v5.2 · 桌面合并版")
+        ver = QLabel("v6.0 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -454,20 +454,37 @@ class MainWindow(QMainWindow):
             e.accept()
             return
         e.ignore()
-        from PySide6.QtWidgets import QMessageBox
+        saved = (CFG.get("general.close_action", "") or "").strip()
+        if saved == "minimize":
+            self.hide()
+            return
+        if saved == "quit":
+            self.quit()
+            return
+        from PySide6.QtWidgets import QCheckBox, QMessageBox
         box = QMessageBox(self)
         box.setWindowTitle("关闭大肥鱼")
         box.setText("要最小化到托盘继续后台运行，还是直接退出？")
+        remember = QCheckBox("记住我的选择")
+        box.setCheckBox(remember)
         b_min = box.addButton("最小化到托盘", QMessageBox.AcceptRole)
         b_quit = box.addButton("退出程序", QMessageBox.DestructiveRole)
         box.addButton("取消", QMessageBox.RejectRole)
         box.exec()
+        action = ""
         if box.clickedButton() is b_min:
+            action = "minimize"
+        elif box.clickedButton() is b_quit:
+            action = "quit"
+        if remember.isChecked() and action:
+            CFG.set("general.close_action", action)
+            CFG.save()
+        if action == "minimize":
             self.hide()
             self.tray.showMessage("大肥鱼还在后台运行",
                                   "点托盘图标可以再打开，右键菜单可以退出。",
                                   QSystemTrayIcon.Information, 2000)
-        elif box.clickedButton() is b_quit:
+        elif action == "quit":
             self.quit()
 
     def changeEvent(self, e) -> None:  # noqa: N802

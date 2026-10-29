@@ -579,6 +579,11 @@ class AutoPilot(QObject):
                 ctx = {"post_id": c.get("pid") or c.get("tid"),
                        "author_uid": c.get("uid", 0),
                        "title": c.get("title", ""), "board": c.get("board", "")}
+                # 先根据对方说的话调整心情
+                try:
+                    self._mood_from_text(platform, c)
+                except Exception:
+                    pass
                 decision = capabilities.reply_with_action(
                     platform, self.hlx if platform == "hlx" else self.lj, c, ctx)
                 text = decision.get("reply") or ""
@@ -612,7 +617,7 @@ class AutoPilot(QObject):
                     memory.nudge_mood(1)
                     try:
                         from .stats import bump
-                        bump("reply")
+                        bump("reply", platform)
                     except Exception:
                         pass
                     record("decision",
@@ -652,6 +657,25 @@ class AutoPilot(QObject):
             if text:
                 return text[:120], why[:80]
         return "", ""
+
+    def _mood_from_text(self, platform: str, c: dict) -> None:
+        text = str(c.get("text") or "")
+        if not text:
+            return
+        owner_uid = int(CFG.get(f"fish.owner_uid_{platform}", 0)
+                        or CFG.get("fish.owner_uid", 0) or 0)
+        owner = bool(owner_uid and int(c.get("uid", 0) or 0) == owner_uid)
+        pos = any(k in text for k in (
+            "夸", "可爱", "喜欢你", "好棒", "好耶", "谢谢", "开心", "乖", "摸摸",
+            "抱抱", "辛苦", "爱你", "厉害", "好看"))
+        neg = any(k in text for k in (
+            "笨", "蠢", "凶", "骂", "滚", "烦", "讨厌", "闭嘴", "菜", "废物",
+            "傻", "恶心"))
+        nick = c.get("nick") or "有人"
+        if pos and not neg:
+            memory.nudge_mood(3, platform, f"被 {nick} 夸了", owner)
+        elif neg and not pos:
+            memory.nudge_mood(-4, platform, f"被 {nick} 凶了", owner)
 
     def _send_reply(self, platform: str, c: dict, text: str) -> tuple[bool, str]:
         from .emoji import sanitize

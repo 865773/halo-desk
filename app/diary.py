@@ -28,7 +28,7 @@ def gen_life(force: bool = False) -> str:
     last = float(CFG.get("fish.life_at", 0) or 0)
     if not force and time.time() - last < interval:
         return ""
-    recent = memory.recent(14)
+    recent = memory.recent(14, "hlx")
     life_before = memory.recent_life(3)
     from datetime import datetime as _dt
     now = _dt.now()
@@ -100,8 +100,8 @@ def write_diary(platform: str = "hlx", board_id: int = 0, board_name: str = "",
         res["msg"] = "只允许发到「泳池 / 闲聊」，但没找到对应板块"
         return res
 
-    life = memory.recent_life(5)
-    memo = memory.recent(8)
+    life = memory.recent_life(5, platform)
+    memo = memory.recent(8, platform)
     where = "葫芦侠三楼" if platform == "hlx" else "灵芥空间"
     prompt = (
         f"你在{where}的「{board_name}」版块。写一篇今天的日记帖，"

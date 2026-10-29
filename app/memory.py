@@ -108,6 +108,30 @@ def _migrate_legacy() -> None:
 _migrate_legacy()
 
 
+def general_file(platform: str = ""):
+    """通用记忆：有账号时按账号分开，没有就放公共目录。"""
+    d = account_dir(platform) if platform else FILES_DIR
+    return d / "memory.txt"
+
+
+def life_file(platform: str = ""):
+    d = account_dir(platform) if platform else FILES_DIR
+    return d / "life.txt"
+
+
+def _mem_read(n: int, platform: str = "") -> list[str]:
+    lines: list[str] = []
+    if platform:
+        lines = read_lines(general_file(platform), n)
+        if not lines:
+            lines = read_lines(MEMORY_FILE, n)
+    else:
+        for p in ("hlx", "lingjie"):
+            lines += read_lines(general_file(p), n)
+        lines += read_lines(MEMORY_FILE, n)
+    return lines[-n:]
+
+
 def append_line(path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
@@ -128,13 +152,14 @@ def remember(text: str, uid: int = 0, platform: str = "") -> None:
     """记一条通用记忆；给了 uid 就同时记到该平台的用户记忆里。"""
     if not text.strip():
         return
-    append_line(MEMORY_FILE, text)
+    target = general_file(platform)
+    append_line(target, text)
     if uid:
         uf = _user_file(uid, platform)
         append_line(uf, text)
         maybe_compress(uf, "user")
-    _trim(MEMORY_FILE, int(CFG.get("fish.memory_max", 1500) or 1500))
-    maybe_compress(MEMORY_FILE, "general")
+    _trim(target, int(CFG.get("fish.memory_max", 1500) or 1500))
+    maybe_compress(target, "general")
 
 
 def _trim(path, max_chars: int) -> None:
@@ -220,8 +245,8 @@ def maybe_compress(path, kind: str = "general") -> None:
         pass
 
 
-def recent(n: int = 8) -> str:
-    return "\n".join(read_lines(MEMORY_FILE, n))
+def recent(n: int = 8, platform: str = "") -> str:
+    return "\n".join(_mem_read(n, platform))
 
 
 def recent_user(uid: int, n: int = 6, platform: str = "") -> str:
@@ -234,13 +259,14 @@ def recent_user(uid: int, n: int = 6, platform: str = "") -> str:
     return "\n".join(lines)
 
 
-def life_append(text: str) -> None:
-    append_line(LIFE_FILE, text)
-    maybe_compress(LIFE_FILE, "life")
+def life_append(text: str, platform: str = "") -> None:
+    p = life_file(platform)
+    append_line(p, text)
+    maybe_compress(p, "life")
 
 
-def recent_life(n: int = 5) -> str:
-    return "\n".join(read_lines(LIFE_FILE, n))
+def recent_life(n: int = 5, platform: str = "") -> str:
+    return "\n".join(read_lines(life_file(platform), n))
 
 
 def reset_life_if_new_day() -> None:
@@ -255,32 +281,76 @@ def reset_life_if_new_day() -> None:
 
 # ---------------- 心情 ----------------
 
-def get_mood() -> int:
+MOOD_BASE = 60
+MOOD_RETURN_SEC = 3 * 3600   # 3 小时慢慢回到平常
+
+
+def mood_file(platform: str = ""):
+    d = account_dir(platform) if platform else FILES_DIR
+    return d / "mood.json"
+
+
+def mood_log_file(platform: str = ""):
+    d = account_dir(platform) if platform else FILES_DIR
+    return d / "mood_log.jsonl"
+
+
+def _mood_decay(v: float, at: float) -> float:
+    import time as _t
+    dt = max(0.0, _t.time() - float(at or 0))
+    if dt <= 0:
+        return v
+    diff = v - MOOD_BASE
+    if abs(diff) < 0.5:
+        return float(MOOD_BASE)
+    step = diff * min(1.0, dt / MOOD_RETURN_SEC)
+    return v - step
+
+
+def get_mood(platform: str = "") -> int:
+    p = mood_file(platform)
     try:
-        if MOOD_FILE.exists():
-            return int(json.loads(MOOD_FILE.read_text("utf-8")).get("mood", 60))
+        if p.exists():
+            d = json.loads(p.read_text("utf-8"))
+            v = _mood_decay(float(d.get("mood", MOOD_BASE)), d.get("ts", 0))
+            return max(0, min(100, int(round(v))))
     except Exception:
         pass
-    return int(CFG.get("fish.mood", 60) or 60)
+    return int(CFG.get("fish.mood", MOOD_BASE) or MOOD_BASE)
 
 
-def set_mood(v: int) -> int:
+def set_mood(v: int, platform: str = "", reason: str = "") -> int:
+    import time as _t
     v = max(0, min(100, int(v)))
-    CFG.set("fish.mood", v)
+    p = mood_file(platform)
     try:
-        MOOD_FILE.write_text(json.dumps({"mood": v, "at": _now()},
-                                        ensure_ascii=False), "utf-8")
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"mood": v, "ts": _t.time()},
+                                ensure_ascii=False), "utf-8")
     except Exception:
         pass
+    if not platform:
+        CFG.set("fish.mood", v)
+    if reason:
+        try:
+            append_line(mood_log_file(platform), f"{v}/100 {reason}")
+        except Exception:
+            pass
     return v
 
 
-def nudge_mood(delta: int) -> int:
-    return set_mood(get_mood() + delta)
+def nudge_mood(delta: int, platform: str = "", reason: str = "",
+               owner: bool = False) -> int:
+    d = float(delta) * (1.5 if owner else 1.0)
+    return set_mood(get_mood(platform) + d, platform, reason)
 
 
-def mood_label(v: Optional[int] = None) -> str:
-    v = get_mood() if v is None else v
+def mood_log(platform: str = "", n: int = 6) -> list[str]:
+    return read_lines(mood_log_file(platform), n)
+
+
+def mood_label(v: Optional[int] = None, platform: str = "") -> str:
+    v = get_mood(platform) if v is None else v
     if v >= 85:
         return "超级开心"
     if v >= 70:
