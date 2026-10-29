@@ -362,6 +362,7 @@ class AutoPilot(QObject):
             DBG.log("AUTO", "自动任务已启动：" + "，".join(started))
         # 打开就生成一次生活记忆；之后每小时由慢任务检查
         QTimer.singleShot(7000, lambda: self._life_tick(force=True))
+        QTimer.singleShot(25000, self._follow_sweep)
 
     def stop(self) -> None:
         self.poll_timer.stop()
@@ -371,6 +372,32 @@ class AutoPilot(QObject):
         self.intent_timer.stop()
 
     # ---------- 自由行动：让大肥鱼自己决定做什么 ----------
+    def _follow_sweep(self) -> None:
+        """启动时补齐：亲密度已到阈值但还没关注的人。"""
+        if getattr(self, "_follow_sweep_done", False):
+            return
+        self._follow_sweep_done = True
+        from .follow import auto_follow_if_close
+        from .relations import REL
+
+        def work(_e):
+            done = 0
+            for platform in ("hlx", "lingjie"):
+                if not (CFG.get("hlx.key", "") if platform == "hlx"
+                        else CFG.get("lingjie.token", "")):
+                    continue
+                client = self.hlx if platform == "hlx" else self.lj
+                for uid, nick, favor in REL.top(platform, 30):
+                    if int(favor or 0) < int(CFG.get("fish.auto_follow_favor", 70) or 70):
+                        continue
+                    if auto_follow_if_close(platform, client, uid, nick):
+                        done += 1
+            return done
+
+        from .ui.common import run_bg
+        run_bg(work, lambda n: self.log.emit(f"亲密度补关注：{n} 人") if n else None,
+               lambda e: DBG.log("FOLLOW", f"补关注失败：{e}", "WARN"))
+
     def _intent_tick(self) -> None:
         if self._intent_busy or not CFG.get("auto.enabled", False):
             return
@@ -678,6 +705,13 @@ class AutoPilot(QObject):
                     from . import names
                     names.set_name(platform, c.get("uid", 0), c.get("nick", ""))
                     favor = REL.add(platform, c.get("uid", 0), 2, c["nick"])
+                    try:
+                        from .follow import auto_follow_if_close
+                        auto_follow_if_close(
+                            platform, self.hlx if platform == "hlx" else self.lj,
+                            c.get("uid", 0), c.get("nick", ""), log=self.log.emit)
+                    except Exception:
+                        pass
                     memory.nudge_mood(1)
                     try:
                         from .stats import bump

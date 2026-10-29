@@ -426,6 +426,13 @@ def execute(action: str, platform: str, client, target: dict | None,
                     f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}评论了《{title}》：{text}",
                     platform=platform)
                 REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
+                try:
+                    from .follow import auto_follow_if_close
+                    auto_follow_if_close(platform, client,
+                                         tgt.get("author_uid", 0),
+                                         tgt.get("author", ""))
+                except Exception:
+                    pass
                 from . import names
                 names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
     if "follow" in bits and tgt.get("author_uid"):

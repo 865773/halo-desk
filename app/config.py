@@ -143,6 +143,8 @@ DEFAULTS: dict = {
         "roam_count_lingjie": 0,
         "mood": 60,
         "mem_gate": True,
+        "auto_follow": True,
+        "auto_follow_favor": 70,
         "chat_scope": "hlx",
         "img_proto": "dashscope",
         "img_url": ("https://dashscope.aliyuncs.com/api/v1/services/aigc/"

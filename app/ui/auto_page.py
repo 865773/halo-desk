@@ -133,6 +133,11 @@ class AutoPage(Page):
                 lambda s, k=key: (CFG.set(f"perm.{k}", bool(s)), CFG.save()))
             perms.addWidget(cb)
             self.perm_boxes[key] = cb
+        self.auto_follow = QCheckBox("亲密度 ≥70 自动关注")
+        self.auto_follow.setChecked(bool(CFG.get("fish.auto_follow", True)))
+        self.auto_follow.stateChanged.connect(
+            lambda s: (CFG.set("fish.auto_follow", bool(s)), CFG.save()))
+        perms.addWidget(self.auto_follow)
         perms.addStretch(1)
         roam.box.addLayout(perms)
         self.body.addWidget(roam)
