@@ -61,8 +61,37 @@ def main() -> int:
     if ic:
         app.setWindowIcon(QIcon(ic))
 
+    # 单实例：避免开两个程序各回一遍消息
+    server = None
+    if "--selftest" not in sys.argv:
+        from PySide6.QtNetwork import QLocalServer, QLocalSocket
+        name = "HaloDeskSingleInstance"
+        probe = QLocalSocket()
+        probe.connectToServer(name)
+        if probe.waitForConnected(250):
+            probe.write(b"show")
+            probe.waitForBytesWritten(250)
+            return 0
+        QLocalServer.removeServer(name)
+        server = QLocalServer()
+        server.listen(name)
+
     win = MainWindow()
     win.show()
+    if server is not None:
+        def _another() -> None:
+            while server.hasPendingConnections():
+                conn = server.nextPendingConnection()
+                try:
+                    conn.readyRead.connect(lambda: None)
+                    conn.disconnectFromServer()
+                except Exception:
+                    pass
+            win.showNormal()
+            win.raise_()
+            win.activateWindow()
+
+        server.newConnection.connect(_another)
     if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
         from PySide6.QtCore import QTimer
         from app.ui.wizard import Wizard

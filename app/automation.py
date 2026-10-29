@@ -28,6 +28,15 @@ STATE_PATH = FILES_DIR / "auto_state.json"
 MAX_SEEN = 800
 
 
+def reply_key(platform: str, c: dict) -> str:
+    """同一帖子 + 同一句话只回一次。"""
+    import hashlib
+    tid = str(c.get("pid") or c.get("tid") or c.get("cid") or "")
+    text = " ".join(str(c.get("text") or "").split())
+    h = hashlib.md5(text.encode("utf-8")).hexdigest()[:10]
+    return f"{platform}:{tid}:{h}"
+
+
 def _load_state() -> dict:
     try:
         if STATE_PATH.exists():
@@ -553,6 +562,18 @@ class AutoPilot(QObject):
                 report.setdefault("notes", []).append(note)
                 DBG.log("AUTO", note)
 
+            # 统一去重：同一帖子+同一句话，历史上回过就不再回
+            done_keys = set(self.state.get("reply_keys", []))
+            fresh = []
+            batch_keys = set()
+            for c in cands:
+                c["key"] = c.get("key") or reply_key(platform, c)
+                if c["key"] in done_keys or c["key"] in batch_keys:
+                    continue
+                batch_keys.add(c["key"])
+                fresh.append(c)
+            cands = fresh
+
             limit = max(1, int(CFG.get("auto.max_per_pass", 3) or 3))
             done = 0
             for c in cands:
@@ -599,14 +620,23 @@ class AutoPilot(QObject):
                 executed = decision.get("executed") or {}
                 if not text and act == "nothing":
                     continue
+                # 同一个帖子+同样内容，只回一次（跨轮次也记住）
+                rkey = c.get("key") or reply_key(platform, c)
+                if rkey in set(self.state.get("reply_keys", [])):
+                    continue
                 if act != "nothing" and executed and executed.get("done"):
                     why = (why + "；" if why else "") + "动作：" + "、".join(executed["done"])
                 gap = brain.random_reply_gap()
                 DBG.log("REPLY", f"等待 {gap:.1f} 秒再回复 {c['nick']}")
                 time.sleep(gap)
+                # 先乐观标记，防止并发/重入重复回复
+                if c["cid"] not in self.state[seen_key]:
+                    self.state[seen_key].append(c["cid"])
+                self.state["reply_keys"] = (list(self.state.get("reply_keys", []))
+                                            + [rkey])[-800:]
+                _save_state(self.state)
                 ok, msg = self._send_reply(platform, c, text or "嗯嗯")
                 if ok:
-                    self.state[seen_key].append(c["cid"])
                     if platform == "lingjie" and c.get("key"):
                         self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
                                                  + [c["key"]])[-500:]
@@ -635,6 +665,15 @@ class AutoPilot(QObject):
                            action=act, reason=why)
                     self.replied.emit(platform, c["nick"], text)
                 else:
+                    # 失败：回滚乐观标记，下一轮还能重试
+                    try:
+                        self.state[seen_key] = [x for x in self.state[seen_key]
+                                                if x != c["cid"]]
+                        self.state["reply_keys"] = [x for x in self.state.get("reply_keys", [])
+                                                    if x != rkey]
+                        _save_state(self.state)
+                    except Exception:
+                        pass
                     report["errors"].append(f"{platform} 回复 {c['nick']} 失败：{msg}")
         except Exception as e:  # noqa: BLE001
             report["errors"].append(f"{platform} 监听失败：{e}")
