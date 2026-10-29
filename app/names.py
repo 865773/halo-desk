@@ -96,6 +96,14 @@ def from_activity(platform: str) -> int:
     return n
 
 
+def _mem_files(platform: str):
+    try:
+        from .memory import list_user_files
+        return list_user_files(platform)
+    except Exception:
+        return []
+
+
 def backfill(platform: str, client=None) -> int:
     """给记忆里没有名字的 uid 补名字：先本地历史，再问接口。"""
     n = from_relations(platform) + from_activity(platform)
@@ -103,7 +111,7 @@ def backfill(platform: str, client=None) -> int:
         return n
     try:
         uids = []
-        for p in FILES_DIR.glob(f"mem_{platform}_u*.txt"):
+        for p in _mem_files(platform):
             try:
                 uid = int(p.stem.rsplit("_u", 1)[1])
             except Exception:

@@ -122,14 +122,30 @@ class HomePage(Page):
     def __init__(self, app):
         super().__init__(app, "总览", "两个平台，一只大肥鱼 —— 葫芦侠三楼 + 灵芥空间，合在一个窗口里。")
 
-        # 总开关
-        master = common.Card(padding=20, spacing=10)
+        # 总开关（顶部主卡）
+        master = common.Card(padding=22, spacing=12)
         top = QHBoxLayout()
-        top.addWidget(common.card_title("启用大肥鱼"))
-        top.addStretch(1)
-        self.master = QCheckBox("启用")
+        top.setSpacing(16)
+        big = _avatar("鱼", theme.ACCENT2)
+        big.setFixedSize(64, 64)
+        big.setStyleSheet(
+            f"background:{theme.ACCENT2};color:#06121F;border-radius:32px;"
+            "font-size:24px;font-weight:800;")
+        top.addWidget(big)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        name = QLabel("大肥鱼")
+        name.setStyleSheet("font-size:20px;font-weight:800;")
+        sub = QLabel("葫芦侠三楼 + 灵芥空间")
+        sub.setObjectName("muted")
+        col.addWidget(name)
+        col.addWidget(sub)
+        top.addLayout(col, 1)
+        self.master = QCheckBox()
+        self.master.setObjectName("switch")
+        self.master.setToolTip("总开关：开启后所有自动功能才生效")
         self.master.stateChanged.connect(self._toggle_master)
-        top.addWidget(self.master)
+        top.addWidget(self.master, 0, Qt.AlignVCenter)
         master.box.addLayout(top)
         master.box.addWidget(common.line())
         self.ready = QLabel("—")

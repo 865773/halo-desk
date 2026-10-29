@@ -133,6 +133,13 @@ QCheckBox::indicator {{
     border: 1px solid {LINE}; background: #0E1729;
 }}
 QCheckBox::indicator:checked {{ background: {ACCENT}; border-color: {ACCENT}; }}
+QCheckBox#switch::indicator {{
+    width: 46px; height: 24px; border-radius: 12px;
+    background: #26395B; border: 1px solid {LINE};
+}}
+QCheckBox#switch::indicator:checked {{
+    background: {ACCENT}; border-color: {ACCENT};
+}}
 
 QToolTip {{
     background: {CARD2}; color: {TEXT}; border: 1px solid {LINE};

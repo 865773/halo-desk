@@ -438,10 +438,12 @@ def main() -> int:
     legacy = FILES_DIR / "mem_lj_u9999.txt"
     legacy.write_text("旧记忆", "utf-8")
     mem_mod._migrate_legacy()
-    migrated = FILES_DIR / "mem_lingjie_u9999.txt"
-    check("旧灵芥记忆迁到新命名", migrated.exists() and not legacy.exists(),
-          migrated.exists())
-    migrated.unlink(missing_ok=True)
+    migrated = list(FILES_DIR.glob("mem_lingjie_u9999.txt")) + \
+        list((FILES_DIR / "accounts").glob("*/mem_lingjie_u9999.txt"))
+    check("旧灵芥记忆迁到新命名", bool(migrated) and not legacy.exists(),
+          [str(p) for p in migrated])
+    for p in migrated:
+        p.unlink(missing_ok=True)
 
     # ---------- 7.8 两个平台发帖额度/间隔独立 ----------
     ap9 = automation.AutoPilot(None)
@@ -617,6 +619,22 @@ def main() -> int:
     check("图片地址去掉尺寸后缀",
           imgs == ["http://a.com/z.jpg", "http://a.com/x.jpg", "http://a.com/y.jpg"],
           imgs)
+
+    # ---------- 7.16 账号切换：用户记忆按账号分开 ----------
+    from app import memory as _mem2
+    CFG.set("hlx.uid", 111)
+    _mem2.remember("账号111的记忆", 222, "hlx")
+    f111 = _mem2.list_user_files("hlx")
+    CFG.set("hlx.uid", 333)
+    f333 = _mem2.list_user_files("hlx")
+    CFG.set("hlx.uid", 111)
+    check("切换账号后用户记忆分开",
+          any("u222" in p.name for p in f111) and
+          not any("u222" in p.name for p in f333),
+          (len(f111), len(f333)))
+    for p in f111:
+        if "u222" in p.name:
+            p.unlink(missing_ok=True)
 
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()

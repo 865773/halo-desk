@@ -1,110 +1,216 @@
-"""首次配置向导：登录两个平台、配置 DeepSeek、可选文生图。"""
+"""首次配置向导：账号、AI、文生图、角色、行为，一次配完。"""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
-                               QLineEdit, QTabWidget, QTextBrowser, QVBoxLayout)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFormLayout,
+                               QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
+                               QSpinBox, QTabWidget, QVBoxLayout, QWidget)
 
-from ..config import CFG
-from . import common, theme
-
-
-def _page(html: str) -> QTextBrowser:
-    tb = QTextBrowser()
-    tb.setOpenExternalLinks(True)
-    tb.setHtml(html)
-    tb.setStyleSheet("font-size:13px;line-height:165%;")
-    return tb
+from ..config import CFG, DEFAULTS
+from . import common
 
 
 class Wizard(QDialog):
     def __init__(self, app):
         super().__init__(app)
         self.app = app
-        self.setWindowTitle("首次配置向导")
-        self.resize(760, 620)
+        self.setWindowTitle("大肥鱼配置向导")
+        self.resize(820, 680)
         lay = QVBoxLayout(self)
-
-        title = QLabel("按顺序配好下面四项，就能启动大肥鱼")
-        title.setStyleSheet("font-size:16px;font-weight:700;")
+        title = QLabel("一次把账号、AI、形象、行为配好，然后启用")
+        title.setStyleSheet("font-size:17px;font-weight:700;")
         lay.addWidget(title)
 
         tabs = QTabWidget()
-        tabs.addTab(_page("""
-        <h3>第一步：登录葫芦侠三楼</h3>
-        <ol>
-          <li>切到「葫芦侠三楼」页，点「登录」；</li>
-          <li>用账号密码登录（或扫码，如果页面提供）；</li>
-          <li>登录成功会显示昵称、UID、等级。</li>
-        </ol>
-        <p>注意：葫芦侠有签到、发帖、评论等频率限制，别把间隔调太短。</p>
-        """), "1 葫芦侠")
-        tabs.addTab(_page("""
-        <h3>第二步：登录灵芥空间</h3>
-        <ol>
-          <li>切到「灵芥空间」页；</li>
-          <li>用账号密码或短信验证码登录；</li>
-          <li>登录态是 JWT，过期后重新登录即可。</li>
-        </ol>
-        <p>灵芥的货币叫「芥子」，相当于葫芦侠的葫芦，程序不会乱送。</p>
-        """), "2 灵芥")
-        tabs.addTab(self._deepseek(), "3 DeepSeek")
-        tabs.addTab(self._image(), "4 文生图")
+        tabs.addTab(self._accounts(), "1 账号")
+        tabs.addTab(self._ai(), "2 AI")
+        tabs.addTab(self._image(), "3 文生图")
+        tabs.addTab(self._role(), "4 角色")
+        tabs.addTab(self._behaviour(), "5 行为")
         lay.addWidget(tabs, 1)
 
-        hint = QLabel("配好后点「完成并启用」；也可以稍后在「总览」里手动启用。")
-        hint.setObjectName("muted")
-        lay.addWidget(hint)
+        self.hint = QLabel("")
+        self.hint.setObjectName("muted")
+        lay.addWidget(self.hint)
 
         row = QHBoxLayout()
         row.addStretch(1)
-        later = common.button("稍后再说", ghost=True, on_click=self._later)
-        done = common.button("完成并启用", primary=True, on_click=self._finish)
-        row.addWidget(later)
-        row.addWidget(done)
+        row.addWidget(common.button("稍后再说", ghost=True, on_click=self._later))
+        row.addWidget(common.button("保存", ghost=True, on_click=self._save_only))
+        row.addWidget(common.button("保存并启用", primary=True, on_click=self._finish))
         lay.addLayout(row)
+        self._load()
 
-    # ---------- tabs ----------
-    def _deepseek(self) -> QTextBrowser:
-        tb = _page("""
-        <h3>第三步：配置 DeepSeek</h3>
-        <ol>
-          <li>打开 <a href="https://platform.deepseek.com/api_keys">platform.deepseek.com</a>
-              注册并创建 API Key；</li>
-          <li>把 Key 粘到下面，点保存；</li>
-          <li>模型默认 deepseek-chat 即可。</li>
-        </ol>
-        <p>所有对话、评论、发帖、日记都走这个 Key；不填则大肥鱼不会说话。</p>
-        """)
-        return tb
+    # ---------- 页面 ----------
+    def _accounts(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.hlx_state = QLabel("—")
+        self.lj_state = QLabel("—")
+        b1 = common.button("去登录葫芦侠", ghost=True,
+                           on_click=lambda: self._go("hlx"))
+        b2 = common.button("去登录灵芥", ghost=True,
+                           on_click=lambda: self._go("lingjie"))
+        r1 = QHBoxLayout()
+        r1.addWidget(self.hlx_state, 1)
+        r1.addWidget(b1)
+        r2 = QHBoxLayout()
+        r2.addWidget(self.lj_state, 1)
+        r2.addWidget(b2)
+        f.addRow("葫芦侠", r1)
+        f.addRow("灵芥", r2)
+        self.owner_hlx = QLineEdit()
+        self.owner_lj = QLineEdit()
+        f.addRow("葫芦侠主人 uid", self.owner_hlx)
+        f.addRow("灵芥主人 uid", self.owner_lj)
+        f.addRow("", QLabel("两个社区是同一个主人时，只填一个会自动沿用。"))
+        return w
 
-    def _image(self) -> QTextBrowser:
-        return _page("""
-        <h3>第四步（可选）：文生图</h3>
-        <p>不配也能用，只是发帖不带图。三种协议任选：</p>
-        <ul>
-          <li><b>OpenAI</b>：接口地址 + Key + 模型（如 gpt-image-1）；</li>
-          <li><b>DashScope（百炼）</b>：Key + 模型（wan2.6-t2i 等），地址可留空；</li>
-          <li><b>Stable Diffusion</b>：填本地地址，如 http://127.0.0.1:7860。</li>
-        </ul>
-        <p>配置在「大肥鱼 → 文生图」里；模型余额用完会自动换下一个。</p>
-        <p>形象设定在「大肥鱼 → 形象」，会原样写进配图提示词。</p>
-        """)
+    def _ai(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.ai_key = QLineEdit()
+        self.ai_key.setEchoMode(QLineEdit.Password)
+        self.ai_model = QLineEdit()
+        f.addRow("DeepSeek Key", self.ai_key)
+        f.addRow("对话模型", self.ai_model)
+        f.addRow("", QLabel("Key 在 platform.deepseek.com 创建；不填大肥鱼不会说话。"))
+        return w
 
-    # ---------- actions ----------
+    def _image(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.img_proto = QComboBox()
+        self.img_proto.addItems(["openai", "dashscope", "sd"])
+        self.img_url = QLineEdit()
+        self.img_key = QLineEdit()
+        self.img_key.setEchoMode(QLineEdit.Password)
+        self.img_model = QLineEdit()
+        self.img_models = QLineEdit()
+        f.addRow("协议", self.img_proto)
+        f.addRow("接口地址", self.img_url)
+        f.addRow("Key", self.img_key)
+        f.addRow("当前模型", self.img_model)
+        f.addRow("备用模型", self.img_models)
+        f.addRow("", QLabel("留空就是纯文字发帖；模型额度用完会自动换备用。"))
+        return w
+
+    def _role(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.name_edit = QLineEdit()
+        self.tags_edit = QLineEdit()
+        self.appear_edit = QPlainTextEdit()
+        self.appear_edit.setMinimumHeight(150)
+        f.addRow("名字", self.name_edit)
+        f.addRow("标签", self.tags_edit)
+        f.addRow("形象（配图）", self.appear_edit)
+        f.addRow("", QLabel("形象会原样写进文生图提示词，可按喜好改。"))
+        return w
+
+    def _behaviour(self) -> QWidget:
+        w = QWidget()
+        f = QFormLayout(w)
+        self.interval = QSpinBox()
+        self.interval.setRange(5, 360)
+        self.interval.setSuffix(" 分钟")
+        self.limit_hlx = QSpinBox()
+        self.limit_hlx.setRange(1, 10)
+        self.limit_lj = QSpinBox()
+        self.limit_lj.setRange(1, 10)
+        self.max_reply = QSpinBox()
+        self.max_reply.setRange(1, 10)
+        f.addRow("自由行动间隔", self.interval)
+        f.addRow("葫芦侠每天发帖", self.limit_hlx)
+        f.addRow("灵芥每天发帖", self.limit_lj)
+        f.addRow("每轮最多回复", self.max_reply)
+        perms = QHBoxLayout()
+        self.perm_boxes = {}
+        for key, label in (("like", "点赞"), ("favorite", "收藏"),
+                           ("comment", "评论"), ("follow", "关注"),
+                           ("tip", "送葫芦/芥子"), ("post", "发帖"),
+                           ("signin", "签到"), ("roam", "逛社区"),
+                           ("reply", "回复"), ("vision", "看图")):
+            cb = QCheckBox(label)
+            self.perm_boxes[key] = cb
+            perms.addWidget(cb)
+        f.addRow("允许的动作", perms)
+        return w
+
+    # ---------- 数据 ----------
+    def _load(self) -> None:
+        cfg = CFG
+        self.hlx_state.setText(
+            f"已登录：{cfg.get('hlx.nick') or cfg.get('hlx.uid')}" if cfg.get("hlx.key")
+            else "未登录")
+        self.lj_state.setText(
+            f"已登录：{cfg.get('lingjie.nickname') or cfg.get('lingjie.uid')}"
+            if cfg.get("lingjie.token") else "未登录")
+        self.owner_hlx.setText(str(cfg.get("fish.owner_uid_hlx", 0) or ""))
+        self.owner_lj.setText(str(cfg.get("fish.owner_uid_lingjie", 0) or ""))
+        self.ai_key.setText(cfg.get("ai.key", ""))
+        self.ai_model.setText(cfg.get("ai.model_basic", "") or DEFAULTS["ai"]["model_basic"])
+        self.img_proto.setCurrentText(cfg.get("fish.img_proto", "openai"))
+        self.img_url.setText(cfg.get("fish.img_url", ""))
+        self.img_key.setText(cfg.get("fish.img_key", ""))
+        self.img_model.setText(cfg.get("fish.img_model", ""))
+        self.img_models.setText(cfg.get("fish.img_models", ""))
+        self.name_edit.setText(cfg.get("fish.name", "大肥鱼"))
+        self.tags_edit.setText(cfg.get("fish.tags", ""))
+        self.appear_edit.setPlainText(cfg.get("fish.appearance", ""))
+        self.interval.setValue(int(cfg.get("fish.interval_min", 20) or 20))
+        self.limit_hlx.setValue(int(cfg.get("autopost.daily_limit_hlx", 2) or 2))
+        self.limit_lj.setValue(int(cfg.get("autopost.daily_limit_lingjie", 2) or 2))
+        self.max_reply.setValue(int(cfg.get("auto.max_per_pass", 3) or 3))
+        for k, cb in self.perm_boxes.items():
+            cb.setChecked(bool(cfg.get(f"perm.{k}", k != "tip")))
+
+    def _save(self) -> None:
+        cfg = CFG
+        cfg.set("fish.owner_uid_hlx", int(self.owner_hlx.text() or 0))
+        cfg.set("fish.owner_uid_lingjie", int(self.owner_lj.text() or 0))
+        cfg.set("ai.key", self.ai_key.text().strip())
+        cfg.set("ai.model_basic", self.ai_model.text().strip())
+        cfg.set("fish.img_proto", self.img_proto.currentText())
+        cfg.set("fish.img_url", self.img_url.text().strip())
+        cfg.set("fish.img_key", self.img_key.text().strip())
+        cfg.set("fish.img_model", self.img_model.text().strip())
+        cfg.set("fish.img_models", self.img_models.text().strip())
+        cfg.set("fish.name", self.name_edit.text().strip() or "大肥鱼")
+        cfg.set("fish.tags", self.tags_edit.text().strip())
+        cfg.set("fish.appearance", self.appear_edit.toPlainText().strip())
+        cfg.set("fish.interval_min", self.interval.value())
+        cfg.set("autopost.daily_limit_hlx", self.limit_hlx.value())
+        cfg.set("autopost.daily_limit_lingjie", self.limit_lj.value())
+        cfg.set("auto.max_per_pass", self.max_reply.value())
+        for k, cb in self.perm_boxes.items():
+            cfg.set(f"perm.{k}", cb.isChecked())
+        cfg.set("general.first_run", False)
+        cfg.save()
+        self.app.pages["home"].refresh()
+
+    # ---------- 动作 ----------
+    def _go(self, platform: str) -> None:
+        self.app.show_page(platform)
+        self.accept()
+
     def _later(self) -> None:
-        CFG.set("first_run", False)
+        CFG.set("general.first_run", False)
         CFG.save()
         self.accept()
 
+    def _save_only(self) -> None:
+        self._save()
+        common.toast(self.app, "已保存", "ok")
+        self.accept()
+
     def _finish(self) -> None:
-        CFG.set("first_run", False)
-        CFG.save()
+        self._save()
         home = self.app.pages.get("home")
         miss = home.missing_items() if home else []
         if miss:
+            self.hint.setText("还差：" + "、".join(miss))
             common.toast(self.app, "还差：" + "、".join(miss), "warn")
-            self.accept()
             return
         CFG.set("fish.enabled", True)
         CFG.save()

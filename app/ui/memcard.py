@@ -58,7 +58,8 @@ class UserMemoryCard(common.Card):
         cur = self.lst.currentItem().data(Qt.UserRole) if self.lst.currentItem() else None
         self.lst.clear()
         self.paths = {}
-        files = sorted(FILES_DIR.glob(f"mem_{self.platform}_u*.txt"),
+        from ..memory import list_user_files
+        files = sorted(list_user_files(self.platform),
                        key=lambda p: p.stat().st_mtime, reverse=True)
         for p in files:
             uid = self._uid_of(p.name)

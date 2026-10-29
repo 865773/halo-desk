@@ -28,14 +28,44 @@ def _now() -> str:
     return datetime.now().strftime("%m-%d %H:%M")
 
 
+ACCOUNTS_DIR = FILES_DIR / "accounts"
+
+
+def _self_uid(platform: str) -> int:
+    """当前登录账号的 uid（切换账号后用户记忆按账号分目录）。"""
+    if not platform:
+        return 0
+    try:
+        return int(CFG.get(f"{platform}.uid", 0) or 0)
+    except Exception:
+        return 0
+
+
+def account_dir(platform: str):
+    uid = _self_uid(platform)
+    if not platform or uid <= 0:
+        return FILES_DIR
+    return ACCOUNTS_DIR / f"{platform}_{uid}"
+
+
 def _user_file(uid: int, platform: str = ""):
     if platform:
-        return FILES_DIR / f"mem_{platform}_u{uid}.txt"
+        return account_dir(platform) / f"mem_{platform}_u{uid}.txt"
     return FILES_DIR / f"mem_u{uid}.txt"
 
 
+def list_user_files(platform: str = "") -> list:
+    """当前账号下的用户记忆文件。"""
+    d = account_dir(platform) if platform else FILES_DIR
+    pat = f"mem_{platform}_u*.txt" if platform else "mem_u*.txt"
+    try:
+        return sorted(d.glob(pat))
+    except Exception:
+        return []
+
+
 def _migrate_legacy() -> None:
-    """把旧命名 mem_lj_u*.txt 迁到 mem_lingjie_u*.txt。"""
+    """旧命名 mem_lj_u* → mem_lingjie_u*；旧平铺文件 → 当前账号目录。"""
     try:
         for p in FILES_DIR.glob("mem_lj_u*.txt"):
             target = FILES_DIR / p.name.replace("mem_lj_", "mem_lingjie_")
@@ -43,6 +73,18 @@ def _migrate_legacy() -> None:
                 p.rename(target)
     except Exception:
         pass
+    for platform in ("hlx", "lingjie"):
+        try:
+            d = account_dir(platform)
+            if d == FILES_DIR:
+                continue
+            for p in FILES_DIR.glob(f"mem_{platform}_u*.txt"):
+                target = d / p.name
+                if not target.exists():
+                    d.mkdir(parents=True, exist_ok=True)
+                    p.rename(target)
+        except Exception:
+            pass
 
 
 _migrate_legacy()
@@ -142,10 +184,14 @@ def compress_all() -> list[str]:
         done.append("通用记忆")
     if compress(LIFE_FILE, "life"):
         done.append("生活记忆")
-    for p in FILES_DIR.glob("mem_*_u*.txt"):
+    for p in list(FILES_DIR.glob("mem_*_u*.txt")) + list(ACCOUNTS_DIR.glob("*/mem_*_u*.txt")):
         if compress(p, "user"):
             done.append(p.stem)
     return done
+
+
+def user_count(platform: str = "") -> int:
+    return len(list_user_files(platform))
 
 
 def maybe_compress(path, kind: str = "general") -> None:
@@ -168,14 +214,6 @@ def recent_user(uid: int, n: int = 6, platform: str = "") -> str:
     if not lines and platform:
         lines = read_lines(FILES_DIR / f"mem_u{uid}.txt", n)
     return "\n".join(lines)
-
-
-def user_count(platform: str = "") -> int:
-    pat = f"mem_{platform}_u*.txt" if platform else "mem_u*.txt"
-    try:
-        return len(list(FILES_DIR.glob(pat)))
-    except Exception:
-        return 0
 
 
 def life_append(text: str) -> None:
