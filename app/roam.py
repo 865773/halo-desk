@@ -95,17 +95,32 @@ def _author(post: dict, platform: str) -> tuple[int, str]:
     return uid, nick
 
 
+def _clean_img(u: str) -> str:
+    """灵芥的 <image> 标签会带 ",宽,高"，要截掉，否则 404。"""
+    u = (u or "").strip()
+    if "," in u:
+        u = u.split(",", 1)[0].strip()
+    return u if u.startswith("http") else ""
+
+
 def _images(post: dict, platform: str) -> list[str]:
     out: list[str] = []
     imgs = post.get("images")
+    if isinstance(imgs, str):
+        try:
+            imgs = json.loads(imgs)
+        except Exception:
+            imgs = []
     if isinstance(imgs, list):
         for u in imgs:
-            if isinstance(u, str) and u.startswith("http"):
-                out.append(u)
+            if isinstance(u, str):
+                u = _clean_img(u)
+                if u and u not in out:
+                    out.append(u)
     detail = post.get("detail") or post.get("content") or ""
     for m in re.finditer(r"<image>([^<]+)</image>", detail):
-        u = m.group(1)
-        if u.startswith("http") and u not in out:
+        u = _clean_img(m.group(1))
+        if u and u not in out:
             out.append(u)
     return out[:3]
 

@@ -608,6 +608,16 @@ def main() -> int:
     check("图片转成 base64 内联", data_url.startswith("data:image/png;base64,"),
           data_url[:30])
 
+    # ---------- 7.15 灵芥图片地址清洗 ----------
+    from app.roam import _images as _roam_images
+    imgs = _roam_images(
+        {"detail": "<image>http://a.com/x.jpg,1440,2095</image>"
+                   "<image>http://a.com/y.jpg,1080,1622</image>",
+         "images": '["http://a.com/z.jpg"]'}, "lingjie")
+    check("图片地址去掉尺寸后缀",
+          imgs == ["http://a.com/z.jpg", "http://a.com/x.jpg", "http://a.com/y.jpg"],
+          imgs)
+
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()
     hlx7.done_pids = {777}
