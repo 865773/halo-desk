@@ -23,6 +23,14 @@ class MemoryPage(Page):
         bar = common.Card(padding=14, spacing=10)
         row = QHBoxLayout()
         row.setSpacing(10)
+        row.addWidget(QLabel("账号"))
+        self.plat = QComboBox()
+        self.plat.addItem("葫芦侠", "hlx")
+        self.plat.addItem("灵芥", "lingjie")
+        if not self.app.cfg.get("hlx.key", ""):
+            self.plat.setCurrentIndex(1)
+        self.plat.currentIndexChanged.connect(lambda _i: self.reload())
+        row.addWidget(self.plat)
         row.addWidget(QLabel("查看"))
         self.which = QComboBox()
         self.which.setMinimumWidth(260)
@@ -53,9 +61,10 @@ class MemoryPage(Page):
         self.which.clear()
         self.paths = {}
         cfg = self.app.cfg
-        platform = "hlx" if cfg.get("hlx.key", "") else (
-            "lingjie" if cfg.get("lingjie.token", "") else "")
-        if not platform:
+        platform = self.plat.currentData() or "hlx"
+        logged = (cfg.get("hlx.key", "") if platform == "hlx"
+                  else cfg.get("lingjie.token", ""))
+        if not logged:
             self.which.blockSignals(False)
             self.view.setPlainText(
                 "还没登录。\n登录账号后，这里显示该账号的通用记忆和生活记忆；"

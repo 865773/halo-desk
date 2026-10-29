@@ -749,6 +749,7 @@ class FishPage(Page):
         lj_ok = bool(CFG.get("lingjie.token", ""))
         self.p_hlx.set_kind("ok" if hlx_ok else "muted")
         self.p_lj.set_kind("ok" if lj_ok else "muted")
+        plat = "hlx" if hlx_ok else ("lingjie" if lj_ok else "")
         self.mem_label.setText(
-            f"记忆 {len(memory.read_lines(memory.MEMORY_FILE, 999))} 条 · "
-            f"心情 {memory.get_mood()}")
+            f"记忆 {len(memory.read_lines(memory.general_file(plat), 999))} 条 · "
+            f"心情 {memory.get_mood(plat)}")

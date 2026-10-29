@@ -148,7 +148,9 @@ class ActivityPage(Page):
                             if comment else "")
             reason_html = (f"<div style='color:{theme.MUTED};font-size:11px;margin-top:2px'>"
                            f"理由：{reason}</div>" if reason else "")
-            tag = (f"<span style='color:{theme.MUTED};font-size:11px'>{plat}</span> " if plat else "")
+            tag = (f"<span style='background:{chip_bg};color:{color};"
+                   f"border-radius:6px;padding:1px 6px;font-size:10px'>"
+                   f"{plat or '大肥鱼'}</span> ")
             rows.append(
                 f"<div style='margin:6px 0;padding:8px 10px;background:{theme.CARD2};"
                 f"border-radius:8px'>"

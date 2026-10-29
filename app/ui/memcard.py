@@ -20,6 +20,7 @@ class UserMemoryCard(common.Card):
         self.app = app
         self.platform = platform
         self.paths: dict[str, str] = {}
+        self._backfilled = False
 
         head = QHBoxLayout()
         head.addWidget(common.card_title(title))
@@ -68,6 +69,26 @@ class UserMemoryCard(common.Card):
         try:
             from .. import names
             names.ensure(self.platform)
+            if not self._backfilled:
+                missing = False
+                try:
+                    from ..memory import list_user_files
+                    for p in list_user_files(self.platform):
+                        uid = int(p.stem.rsplit("_u", 1)[1])
+                        if uid and not names.get(self.platform, uid):
+                            missing = True
+                            break
+                except Exception:
+                    missing = False
+                if missing:
+                    self._backfilled = True
+                    client = self.app.hlx if self.platform == "hlx" else self.app.lj
+
+                    def work(_e):
+                        return names.backfill(self.platform, client)
+
+                    from .common import run_bg
+                    run_bg(work, lambda _n: self.reload(), lambda _e: None)
         except Exception:
             pass
         from ..memory import list_user_files

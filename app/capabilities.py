@@ -329,7 +329,8 @@ def execute(action: str, platform: str, client, target: dict | None,
             REL.add(platform, uid, 3, (target or {}).get("nick", ""))
             record("follow", f"关注了 uid={uid}", platform, uid=uid, reason=reason)
             memory.remember(f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}"
-                            f"关注了 @{(target or {}).get('nick') or ('uid=' + str(uid))}")
+                            f"关注了 @{(target or {}).get('nick') or ('uid=' + str(uid))}",
+                            platform=platform)
         res.update(ok=ok, done=["关注"] if ok else [], msg=why)
         return res
 
@@ -422,7 +423,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                                   + ("" if visible else "（审核中）"),
                        platform, pid=pid, uid=tgt.get("author_uid"), reason=reason)
                 memory.remember(
-                    f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}评论了《{title}》：{text}")
+                    f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}评论了《{title}》：{text}",
+                    platform=platform)
                 REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
                 from . import names
                 names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
@@ -433,7 +435,8 @@ def execute(action: str, platform: str, client, target: dict | None,
             record("follow", f"关注了 @{tgt.get('author') or ''}", platform,
                    uid=tgt.get("author_uid"), reason=reason)
             memory.remember(f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}关注了 "
-                            f"@{tgt.get('author') or 'uid=' + str(tgt.get('author_uid'))}")
+                            f"@{tgt.get('author') or 'uid=' + str(tgt.get('author_uid'))}",
+                            platform=platform)
             REL.add(platform, tgt.get("author_uid", 0), 3, tgt.get("author", ""))
 
     if spec.get("need_tip"):
@@ -467,6 +470,15 @@ def execute(action: str, platform: str, client, target: dict | None,
 
     if done:
         memory.nudge_mood(1)
+        # 点赞/收藏/打赏这些也写进该账号的通用记忆
+        for lb in done:
+            if str(lb).startswith(("点赞", "收藏", "送", "发帖", "签到")):
+                try:
+                    memory.remember(
+                        f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}《{title}》{lb}",
+                        platform=platform)
+                except Exception:
+                    pass
     res["done"] = done
     res["ok"] = bool(done)
     if not done and not res["msg"]:

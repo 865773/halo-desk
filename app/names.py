@@ -96,13 +96,18 @@ def from_activity(platform: str) -> int:
             if not uid:
                 continue
             text = it.get("text") or ""
-            for sep in ("回复了 ", "评论了 ", "关注了 @"):
-                if sep in text:
-                    nick = text.split(sep, 1)[1].split("：")[0].split("（")[0].strip()
-                    if nick and not nick.startswith("uid=") and not get(platform, uid):
-                        set_name(platform, uid, nick)
-                        n += 1
+            import re as _re
+            nick = ""
+            for pat in (r"回复了\s*([^：:（]+)", r"决定回复\s*([^：:（]+)",
+                        r"评论了《[^》]*》[：:](.+)", r"关注了\s*@([^\s：:（]+)",
+                        r"@([^\s：:（]+)"):
+                m = _re.search(pat, text)
+                if m:
+                    nick = m.group(1).strip()
                     break
+            if nick and not nick.startswith("uid=") and not get(platform, uid):
+                set_name(platform, uid, nick)
+                n += 1
     except Exception:
         pass
     return n

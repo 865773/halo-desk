@@ -19,6 +19,7 @@ class Wizard(QDialog):
         self.app = app
         self.step = 0
         self.ai_ok = False
+        self.img_ok = False
         self.setWindowTitle("大肥鱼配置向导")
         self.resize(840, 700)
         lay = QVBoxLayout(self)
@@ -96,10 +97,43 @@ class Wizard(QDialog):
     def _ai(self) -> QWidget:
         w = QWidget()
         f = QFormLayout(w)
+        self.ai_provider = QComboBox()
+        self.ai_provider.addItem("DeepSeek 官方（只填 Key）", "deepseek")
+        self.ai_provider.addItem("自定义（OpenAI 兼容）", "custom")
+        self.ai_provider.currentIndexChanged.connect(self._sync_ai)
+        f.addRow("使用", self.ai_provider)
+
+        self.ds_box = QWidget()
+        dsl = QVBoxLayout(self.ds_box)
+        dsl.setContentsMargins(0, 0, 0, 0)
         self.ai_key = QLineEdit()
         self.ai_key.setEchoMode(QLineEdit.Password)
-        self.ai_key.setPlaceholderText("sk-...")
-        f.addRow("API Key", self.ai_key)
+        self.ai_key.setPlaceholderText("DeepSeek API Key（sk-...）")
+        dsl.addWidget(self.ai_key)
+        f.addRow(self.ds_box)
+
+        self.custom_box = QWidget()
+        cbl = QVBoxLayout(self.custom_box)
+        cbl.setContentsMargins(0, 0, 0, 0)
+        self.ai_base = QLineEdit()
+        self.ai_base.setPlaceholderText("https://dashscope.aliyuncs.com/api/v1")
+        cbl.addWidget(self.ai_base)
+        row2 = QHBoxLayout()
+        self.ai_ckey = QLineEdit()
+        self.ai_ckey.setEchoMode(QLineEdit.Password)
+        self.ai_ckey.setPlaceholderText("API Key")
+        row2.addWidget(self.ai_ckey, 1)
+        self.ai_cmodel = QLineEdit()
+        self.ai_cmodel.setPlaceholderText("模型名，如 qwen-plus")
+        row2.addWidget(self.ai_cmodel, 1)
+        self.ai_cvision = QLineEdit()
+        self.ai_cvision.setPlaceholderText("看图模型，如 qwen-vl-max")
+        row2.addWidget(self.ai_cvision, 1)
+        cbl.addLayout(row2)
+        cbl.addWidget(common.button("一键填入阿里云", ghost=True,
+                                    on_click=self._fill_ai_aliyun))
+        f.addRow(self.custom_box)
+
         test = common.button("测试 Key 是否可用", on_click=self._test_ai)
         self.ai_state = QLabel("未测试")
         self.ai_state.setObjectName("muted")
@@ -108,11 +142,21 @@ class Wizard(QDialog):
         r.addWidget(self.ai_state, 1)
         f.addRow("", r)
         f.addRow("", QLabel(
-            "1）打开 platform.deepseek.com 注册，进「API Keys」创建；\n"
-            "2）把 Key 粘到上面，点「测试」；测试通过才能下一步；\n"
-            "3）日常文字用 deepseek-chat，需要看图时自动换能看图的模型；\n"
-            "4）Key 不填，大肥鱼不会说话。"))
+            "1）DeepSeek：打开 platform.deepseek.com → API Keys → 创建，只填 Key；\n"
+            "2）自定义：填 OpenAI 兼容地址/Key/模型；阿里云一键会填\n"
+            "   https://dashscope.aliyuncs.com/api/v1\n"
+            "3）必须测试通过才能下一步。"))
         return w
+
+    def _sync_ai(self, *_a) -> None:
+        custom = self.ai_provider.currentData() == "custom"
+        self.ds_box.setVisible(not custom)
+        self.custom_box.setVisible(custom)
+
+    def _fill_ai_aliyun(self) -> None:
+        self.ai_base.setText("https://dashscope.aliyuncs.com/api/v1")
+        self.ai_cmodel.setText("qwen-plus")
+        self.ai_cvision.setText("qwen-vl-max")
 
     def _image(self) -> QWidget:
         w = QWidget()
@@ -201,6 +245,14 @@ class Wizard(QDialog):
         self.owner_hlx.setText(str(cfg.get("fish.owner_uid_hlx", 0) or ""))
         self.owner_lj.setText(str(cfg.get("fish.owner_uid_lingjie", 0) or ""))
         self.ai_key.setText(cfg.get("ai.key", ""))
+        prov = "custom" if cfg.get("ai.provider", "deepseek") == "custom" else "deepseek"
+        self.ai_provider.setCurrentIndex(1 if prov == "custom" else 0)
+        self.ai_base.setText(cfg.get("ai.custom_base", "") or
+                             "https://dashscope.aliyuncs.com/api/v1")
+        self.ai_ckey.setText(cfg.get("ai.custom_key", ""))
+        self.ai_cmodel.setText(cfg.get("ai.custom_model", "") or "qwen-plus")
+        self.ai_cvision.setText(cfg.get("ai.custom_vision", "") or "qwen-vl-max")
+        self._sync_ai()
         self.img_proto.setCurrentText(cfg.get("fish.img_proto", "dashscope"))
         self.img_url.setText(cfg.get("fish.img_url", "") or ALIYUN_IMG_URL)
         self.img_key.setText(cfg.get("fish.img_key", ""))
@@ -224,7 +276,13 @@ class Wizard(QDialog):
         cfg = CFG
         cfg.set("fish.owner_uid_hlx", int(self.owner_hlx.text() or 0))
         cfg.set("fish.owner_uid_lingjie", int(self.owner_lj.text() or 0))
+        cfg.set("ai.provider",
+                "custom" if self.ai_provider.currentData() == "custom" else "deepseek")
         cfg.set("ai.key", self.ai_key.text().strip())
+        cfg.set("ai.custom_base", self.ai_base.text().strip())
+        cfg.set("ai.custom_key", self.ai_ckey.text().strip())
+        cfg.set("ai.custom_model", self.ai_cmodel.text().strip())
+        cfg.set("ai.custom_vision", self.ai_cvision.text().strip())
         cfg.set("fish.img_proto", self.img_proto.currentText())
         cfg.set("fish.img_url", self.img_url.text().strip())
         cfg.set("fish.img_key", self.img_key.text().strip())
@@ -271,10 +329,10 @@ class Wizard(QDialog):
         miss = []
         if not self._logged():
             miss.append("至少登录一个平台")
-        if not self.ai_ok and not CFG.get("ai.key", ""):
-            miss.append("AI Key")
-        elif not self.ai_ok:
-            miss.append("AI Key 未测试通过")
+        if not self.ai_ok:
+            miss.append("AI 接口未测试通过")
+        if not self.img_ok:
+            miss.append("文生图未测试通过")
         return miss
 
     def _ready(self) -> bool:
@@ -286,6 +344,9 @@ class Wizard(QDialog):
             return
         if self.step == 1 and not self.ai_ok:
             common.toast(self.app, "先点「测试 Key」并通过", "warn")
+            return
+        if self.step == 2 and not self.img_ok:
+            common.toast(self.app, "文生图测试通过后才能下一步", "warn")
             return
         self._save()
         self.step = min(4, self.step + 1)
@@ -299,18 +360,19 @@ class Wizard(QDialog):
 
     # ---------- 动作 ----------
     def _test_ai(self) -> None:
-        key = self.ai_key.text().strip()
+        self._save()
+        custom = self.ai_provider.currentData() == "custom"
+        key = (self.ai_ckey.text() if custom else self.ai_key.text()).strip()
         if not key:
-            common.toast(self.app, "先填 Key", "warn")
+            common.toast(self.app, "先填 API Key", "warn")
             return
-        CFG.set("ai.key", key)
-        CFG.save()
         self.ai_state.setText("测试中…")
+        self.ai_ok = False
         from .common import run_bg
 
         def work(_e):
             from .. import ai
-            return ai.ask("只回复两个字：可用", "测试", CFG.get("ai.model_basic"))
+            return ai.ask("只回复两个字：可用", "测试")
 
         def done(_t):
             self.ai_ok = True
@@ -334,30 +396,44 @@ class Wizard(QDialog):
         if not self.img_key.text().strip():
             common.toast(self.app, "先填文生图 Key", "warn")
             return
-        CFG.set("fish.img_proto", self.img_proto.currentText())
-        CFG.set("fish.img_url", self.img_url.text().strip())
-        CFG.set("fish.img_key", self.img_key.text().strip())
-        CFG.set("fish.img_model", self.img_model.text().strip())
-        CFG.set("fish.img_models", self.img_models.text().strip())
-        CFG.save()
+        self._save()
+        models = [self.img_model.text().strip()] + [
+            m.strip() for m in self.img_models.text().split(",") if m.strip()]
+        models = [m for i, m in enumerate(models) if m and m not in models[:i]]
         self.img_state.setText("生成中…")
+        self.img_ok = False
         from .common import run_bg
 
         def work(_e):
             from .. import imaging
-            return imaging.generate("一只蓝白配色、鲸鱼耳朵的可爱少女，坐在窗边，柔和光线")
+            last = ""
+            for m in models:
+                CFG.set("fish.img_model", m)
+                CFG.save()
+                try:
+                    png = imaging.generate(
+                        "一只蓝白配色、鲸鱼耳朵的可爱少女，坐在窗边，柔和光线")
+                except Exception as e:
+                    last = str(e)
+                    continue
+                if png:
+                    return m, png
+                last = "空结果"
+            raise RuntimeError(last or "全部模型失败")
 
-        def done(png):
-            if png:
-                self.img_state.setText(f"可用 ✔（{len(png) // 1024} KB）")
-                common.toast(self.app, "文生图可用", "ok")
-            else:
-                self.img_state.setText("不可用")
-                common.toast(self.app, "生成失败，检查 Key/模型", "error")
+        def done(res):
+            m, png = res
+            self.img_ok = True
+            self.img_model.setText(m)
+            CFG.set("fish.img_model", m)
+            CFG.save()
+            self.img_state.setText(f"{m} 可用 ✔（{len(png) // 1024} KB）")
+            common.toast(self.app, f"文生图可用：{m}", "ok")
 
         def fail(e):
-            self.img_state.setText("不可用")
-            common.toast(self.app, f"失败：{e}", "error")
+            self.img_ok = False
+            self.img_state.setText("全部失败")
+            common.toast(self.app, f"文生图不可用：{e}", "error")
 
         run_bg(work, done, fail)
 
@@ -399,19 +475,45 @@ class Wizard(QDialog):
             common.toast(self.app, "先登录葫芦侠", "warn")
             return
         from .common import run_bg
+        from PySide6.QtWidgets import (QDialog, QListWidget, QListWidgetItem,
+                                       QVBoxLayout as _VBox)
 
         def work(_e):
-            return self.app.hlx.followers(30)
+            return self.app.hlx.followers(100)
 
         def done(fans):
             if not fans:
                 common.toast(self.app, "没拿到粉丝列表", "warn")
                 return
-            u = fans[0].get("user") or fans[0]
-            uid = int(u.get("userID", 0) or 0)
-            if uid:
-                self.owner_hlx.setText(str(uid))
-                common.toast(self.app, f"已填入 {u.get('nick') or uid}", "ok")
+            dlg = QDialog(self)
+            dlg.setWindowTitle("选择主人（粉丝列表）")
+            dlg.resize(420, 520)
+            v = _VBox(dlg)
+            lst = QListWidget()
+            rows = []
+            for f in fans:
+                u = f.get("user") or f
+                uid = int(u.get("userID", 0) or 0)
+                nick = u.get("nick") or f"uid={uid}"
+                rows.append((uid, nick))
+                it = QListWidgetItem(f"{nick}　（uid={uid}）")
+                it.setData(Qt.UserRole, uid)
+                lst.addItem(it)
+            v.addWidget(lst)
+
+            def choose() -> None:
+                it = lst.currentItem()
+                if not it:
+                    return
+                uid = int(it.data(Qt.UserRole) or 0)
+                if uid:
+                    self.owner_hlx.setText(str(uid))
+                    dlg.accept()
+
+            lst.itemDoubleClicked.connect(lambda _i: choose())
+            v.addWidget(common.button("用这个当主人", primary=True, on_click=choose))
+            lst.setCurrentRow(0)
+            dlg.exec()
 
         run_bg(work, done, lambda e: common.toast(self.app, f"获取失败：{e}", "error"))
 

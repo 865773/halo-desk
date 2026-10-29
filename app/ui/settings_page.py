@@ -206,7 +206,10 @@ class SettingsPage(Page):
         self.ai_cvision.setPlaceholderText("看图模型名（可空）")
         self.ai_cvision.editingFinished.connect(self._save_ai)
         crow2.addWidget(self.ai_cvision, 1)
+        cb_lay.addWidget(self.ai_cvision, 1)
         cb_lay.addLayout(crow2)
+        cb_lay.addWidget(common.button("一键填入阿里云", ghost=True,
+                                       on_click=self._fill_ai_aliyun))
         ai.box.addWidget(self.custom_box)
         self._sync_ai_boxes()
         trow = QHBoxLayout()
@@ -430,6 +433,33 @@ class SettingsPage(Page):
         lay.addWidget(lb)
         lay.addWidget(QLabel("谢谢支持～"))
         dlg.exec()
+
+    def _fill_ai_aliyun(self) -> None:
+        self.ai_base.setText("https://dashscope.aliyuncs.com/api/v1")
+        self.ai_cmodel.setText("qwen-plus")
+        self.ai_cvision.setText("qwen-vl-max")
+        self._save_ai()
+
+    def refresh(self) -> None:
+        """从配置重新读一遍，避免向导改完这里还显示旧值。"""
+        self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
+        self.autostart.setChecked(autostart_enabled())
+        self.pet_on.setChecked(bool(CFG.get("fish.pet_on", True)))
+        self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))
+        self.ai_provider.setCurrentIndex(
+            1 if CFG.get("ai.provider", "deepseek") == "custom" else 0)
+        self.ai_key.setText(CFG.get("ai.key", ""))
+        self.ai_base.setText(CFG.get("ai.custom_base", ""))
+        self.ai_ckey.setText(CFG.get("ai.custom_key", ""))
+        self.ai_cmodel.setText(CFG.get("ai.custom_model", ""))
+        self.ai_cvision.setText(CFG.get("ai.custom_vision", ""))
+        cur = CFG.get("fish.img_proto", "dashscope")
+        self.img_proto.setCurrentIndex(max(0, self.img_proto.findData(cur)))
+        self.img_url.setText(CFG.get("fish.img_url", ""))
+        self.img_key.setText(CFG.get("fish.img_key", ""))
+        self.img_model.setText(CFG.get("fish.img_model", ""))
+        self.img_models.setText(CFG.get("fish.img_models", ""))
+        self._sync_ai_boxes()
 
     def _sync_ai_boxes(self) -> None:
         custom = self.ai_provider.currentIndex() == 1

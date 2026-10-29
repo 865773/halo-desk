@@ -246,7 +246,7 @@ def roam_session(max_steps: int = 3, dry_run: bool = False, log=print,
         txt = f"在{pname}逛了 {total['seen']} 条帖子，做了 {len(total.get('actions') or [])} 个动作"
         if titles:
             txt += "；看了" + "".join(f"《{t}》" for t in titles)
-        memory.remember(txt)
+        memory.remember(txt, platform=total.get("platform") or platform)
     return total
 
 
@@ -438,6 +438,6 @@ def visit_user(platform: str, uid: int = 0, dry_run: bool = False, log=print,
         _VISITING["on"] = False
     if summary["actions"]:
         memory.remember(f"去 @{nick} 的主页看了帖子，做了 "
-                        f"{len(summary['actions'])} 个动作")
+                        f"{len(summary['actions'])} 个动作", platform=platform)
         REL.add(platform, uid, 1, nick)
     return summary

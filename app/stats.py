@@ -41,7 +41,12 @@ def _load() -> dict:
     return {"day": _today(), "counts": {}, "total": {}}
 
 
+def _norm(platform: str) -> str:
+    return "lingjie" if platform in ("lj", "lingjie") else platform
+
+
 def bump(kind: str, platform: str = "", n: int = 1) -> None:
+    platform = _norm(platform)
     if kind not in KIND_LABEL:
         return
     with _LOCK:
@@ -67,7 +72,13 @@ def today_platform(platform: str) -> dict:
     data = _load()
     if data.get("day") != _today():
         return {}
-    return dict((data.get("platforms") or {}).get(platform) or {})
+    plat = _norm(platform)
+    allp = data.get("platforms") or {}
+    out = dict(allp.get(plat) or {})
+    if plat == "lingjie":
+        for k, v in (allp.get("lj") or {}).items():
+            out[k] = int(out.get(k, 0)) + int(v)
+    return out
 
 
 def today_counts() -> dict:
