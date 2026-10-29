@@ -63,7 +63,10 @@ class UserMemoryCard(common.Card):
             uid = self._uid_of(p.name)
             nick = ""
             try:
-                nick = REL.nick(self.platform, uid)
+                from .. import names
+                nick = names.get(self.platform, uid)
+                if not nick:
+                    nick = REL.nick(self.platform, uid)
             except Exception:
                 nick = ""
             lines = 0

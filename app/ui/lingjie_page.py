@@ -52,7 +52,6 @@ class LingjiePage(Page):
         self.log.setStyleSheet("font-size:12px;")
         sign.box.addWidget(self.log)
         self.body.addWidget(sign)
-        self._build_stats()
         from .memcard import UserMemoryCard
         self.user_mem = UserMemoryCard(self.app, "lingjie", "用户记忆（灵芥）")
         self.body.addWidget(self.user_mem)
@@ -308,4 +307,3 @@ class LingjiePage(Page):
 
     def refresh(self) -> None:
         self._build_account()
-        self.render_stats()

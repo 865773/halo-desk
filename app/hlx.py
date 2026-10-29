@@ -143,6 +143,11 @@ class HlxClient:
             f"{BASE}/user/info/ANDROID/4.1.8?{self.auth()}&user_id={self.uid}"))
         return obj.get("user") or obj
 
+    def user_info(self, uid: int) -> dict:
+        obj = self._json(self._get(
+            f"{BASE}/user/info/ANDROID/4.1.8?{self.auth()}&user_id={uid}"))
+        return obj.get("user") or obj
+
     def boards(self) -> list[tuple[int, str]]:
         obj = self._json(self._get(f"{BASE}/category/list/ANDROID/2.0"))
         out = []

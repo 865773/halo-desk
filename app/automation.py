@@ -566,6 +566,8 @@ class AutoPilot(QObject):
                     DBG.log("REPLY", f"{name} → {c['nick']}(uid={c.get('uid')})：{text}")
                     memory.remember(f"{name}上回复了 {c['nick']}：{text}",
                                     c.get("uid", 0), platform)
+                    from . import names
+                    names.set_name(platform, c.get("uid", 0), c.get("nick", ""))
                     favor = REL.add(platform, c.get("uid", 0), 2, c["nick"])
                     memory.nudge_mood(1)
                     try:

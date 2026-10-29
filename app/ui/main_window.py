@@ -52,6 +52,26 @@ class MainWindow(QMainWindow):
                 CFG.set(key, legacy)
         CFG.save()
 
+    def _warm_names(self) -> None:
+        """后台把用户记忆里只有 uid 的补上昵称。"""
+
+        def work(_emit):
+            from .. import names
+            return names.backfill("hlx", self.hlx) + names.backfill("lingjie", self.lj)
+
+        def done(n):
+            if n:
+                from ..debuglog import DBG
+                DBG.log("NAME", f"补了 {n} 个昵称")
+                try:
+                    self.pages["hlx"].user_mem.reload()
+                    self.pages["lingjie"].user_mem.reload()
+                except Exception:
+                    pass
+
+        from .common import run_bg
+        run_bg(work, done, lambda e: None)
+
     def _warm_emoji(self) -> None:
         """后台拉一次灵芥表情表（7 天缓存），失败就用内置兜底。"""
         if not CFG.get("lingjie.token", ""):
@@ -79,6 +99,7 @@ class MainWindow(QMainWindow):
         self.pet: PetWindow | None = None
         self._quitting = False
         QTimer.singleShot(4000, self._warm_emoji)
+        QTimer.singleShot(6000, self._warm_names)
 
         self.setWindowTitle("大肥鱼桌面版 · 葫芦侠 + 灵芥")
         self.resize(1120, 760)

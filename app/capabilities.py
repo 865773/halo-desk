@@ -341,10 +341,9 @@ def execute(action: str, platform: str, client, target: dict | None,
                 record("comment", f"评论《{title}》：{text}"
                                   + ("" if visible else "（审核中）"),
                        platform, pid=pid, uid=tgt.get("author_uid"), reason=reason)
-                memory.remember(f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}评论了 "
-                                f"{tgt.get('author') or ''} 的帖子：{text}",
-                                tgt.get("author_uid", 0), platform)
-                REL.add(platform, tgt.get("author_uid", 0), 2, tgt.get("author", ""))
+                REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
+                from . import names
+                names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
     if "follow" in bits and tgt.get("author_uid"):
         if _do_follow(platform, client, tgt["author_uid"]):
             done.append("关注")

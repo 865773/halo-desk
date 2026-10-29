@@ -54,7 +54,6 @@ class HlxPage(Page):
         self.log.setStyleSheet("font-size:12px;")
         sign.box.addWidget(self.log)
         self.body.addWidget(sign)
-        self._build_stats()
         from .memcard import UserMemoryCard
         self.user_mem = UserMemoryCard(self.app, "hlx", "用户记忆（葫芦侠）")
         self.body.addWidget(self.user_mem)
@@ -294,4 +293,3 @@ class HlxPage(Page):
 
     def refresh(self) -> None:
         self._build_account()
-        self.render_stats()
