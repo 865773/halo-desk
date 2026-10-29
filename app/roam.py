@@ -207,6 +207,23 @@ def roam_session(max_steps: int = 3, dry_run: bool = False, log=print,
     if not avail:
         return {"errors": ["两个平台都没登录"]}
     platform, why = brain.choose_community(avail)
+    # 平衡：如果连续多次都偏向同一个社区，强制换另一个逛一次
+    if len(avail) > 1:
+        from datetime import datetime as _dt
+        today = _dt.now().strftime("%Y-%m-%d")
+        if CFG.get("fish.roam_count_day", "") != today:
+            CFG.set("fish.roam_count_day", today)
+            CFG.set("fish.roam_count_hlx", 0)
+            CFG.set("fish.roam_count_lingjie", 0)
+        ch = int(CFG.get(f"fish.roam_count_{platform}", 0) or 0)
+        other = "lingjie" if platform == "hlx" else "hlx"
+        co = int(CFG.get(f"fish.roam_count_{other}", 0) or 0)
+        if ch - co >= 2:
+            why = (why + "；" if why else "") + "最近老在一个社区，换个地方逛逛"
+            platform = other
+        CFG.set(f"fish.roam_count_{platform}",
+                int(CFG.get(f"fish.roam_count_{platform}", 0) or 0) + 1)
+        CFG.save()
     name = PLATFORM_NAME.get(platform, platform)
     record("decision", f"决定去{name}逛逛" + (f"：{why}" if why else ""),
            platform, reason=why)

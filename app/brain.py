@@ -270,7 +270,17 @@ def choose_community(available: list[str]) -> tuple[str, str]:
     """决定去哪个社区逛。"""
     names = {"hlx": "葫芦侠三楼", "lingjie": "灵芥空间"}
     opts = [names[x] for x in available]
-    choice, why = _choose("你现在想去哪个社区逛逛？", opts, opts[0] if opts else "")
+    ask = "你现在想去哪个社区逛逛？"
+    try:
+        hx = int(CFG.get("fish.roam_count_hlx", 0) or 0)
+        lj = int(CFG.get("fish.roam_count_lingjie", 0) or 0)
+        if len(available) > 1 and abs(hx - lj) >= 2:
+            more = "葫芦侠三楼" if hx > lj else "灵芥空间"
+            less = "灵芥空间" if hx > lj else "葫芦侠三楼"
+            ask += f"（最近去{more}比较多，这次去{less}会更有新鲜感）"
+    except Exception:
+        pass
+    choice, why = _choose(ask, opts, opts[0] if opts else "")
     for k, v in names.items():
         if v == choice:
             return k, why
