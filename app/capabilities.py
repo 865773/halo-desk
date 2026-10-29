@@ -488,8 +488,10 @@ def execute(action: str, platform: str, client, target: dict | None,
 
 def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
     """回复消息时用：让模型自己决定「只回话」还是「回话 + 做动作」。"""
-    from .brain import system_prompt
+    from .brain import system_prompt, owner_uid
     sys = system_prompt(platform, message.get("uid", 0), message.get("nick", ""))
+    is_owner = bool(owner_uid(platform) and
+                    int(message.get("uid", 0) or 0) == owner_uid(platform))
     ask = (f"在{'葫芦侠三楼' if platform == 'hlx' else '灵芥空间'}，"
            f"{message.get('nick') or '对方'}（uid={message.get('uid', 0)}）"
            f"在你的帖子「{message.get('title') or ''}」（post_id={ctx.get('post_id', 0)}）"
@@ -500,7 +502,9 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
            "注意：对方说「我 / 我的主页 / 我收藏的」指的是**对方自己**，要用 user_first/"
            "user_index（收藏类目标另说）；只有说「你 / 大肥鱼」时才用 my_*。\n"
            "target.kind=user_first/user_index/user 时，uid 必须填上面的对方 uid 或别人明确给的 uid。\n"
-           "只输出一行 JSON："
+           + ("【重要】对方就是你的主人，reply 里必须自然叫一次「主人」。\n"
+              if is_owner else "")
+           + "只输出一行 JSON："
            '{"reply":"15~45字口语回复","action":"动作清单里的一个动作或 nothing",'
            '"target":{"kind":"known_post"},"content":"","reason":"为什么这么做"}')
     from .net import json_of
@@ -514,6 +518,8 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
         if not obj:
             continue
         reply = " ".join((obj.get("reply") or "").split())[:120]
+        if is_owner and reply and "主人" not in reply:
+            reply = "主人，" + reply
         action = str(obj.get("action") or "nothing").strip()
         if action not in ACTIONS:
             action = "nothing"

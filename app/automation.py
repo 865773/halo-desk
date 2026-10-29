@@ -358,8 +358,8 @@ class AutoPilot(QObject):
             self.intent_timer.stop()
         if started:
             DBG.log("AUTO", "自动任务已启动：" + "，".join(started))
-        # 打开就检查一次生活记忆：距上次 ≥6 小时才生成，否则跳过
-        QTimer.singleShot(7000, self._life_tick)
+        # 打开就生成一次生活记忆；之后每小时由慢任务检查
+        QTimer.singleShot(7000, lambda: self._life_tick(force=True))
 
     def stop(self) -> None:
         self.poll_timer.stop()
@@ -1029,15 +1029,21 @@ class AutoPilot(QObject):
         self.run_diary()
 
     # ---------- 生活记忆 ----------
-    def _life_tick(self) -> None:
+    def _life_tick(self, force: bool = False) -> None:
         if not CFG.get("ai.key", ""):
             return
+        if force:
+            if getattr(self, "_life_boot_done", False):
+                force = False
+            else:
+                self._life_boot_done = True
 
         def work(_e):
             from .diary import gen_life
-            return gen_life()
+            return gen_life(force=force)
 
-        common_ok = (CFG.get("auto.enabled", False) or CFG.get("roam.enabled", False)
+        common_ok = (CFG.get("fish.enabled", False) or CFG.get("auto.enabled", False)
+                     or CFG.get("roam.enabled", False)
                      or CFG.get("autopost.enabled", False)
                      or CFG.get("autopost.diary_enabled", False))
         if not common_ok:

@@ -56,6 +56,15 @@ def format_doc() -> str:
             "actions 里只能出现上面卡片里的动作名；不需要的字段省略。")
 
 
+def owner_uid(platform: str = "") -> int:
+    hx = int(CFG.get("fish.owner_uid_hlx", 0) or 0)
+    lj = int(CFG.get("fish.owner_uid_lingjie", 0) or 0)
+    legacy = int(CFG.get("fish.owner_uid", 0) or 0)
+    hx = hx or legacy or lj
+    lj = lj or legacy or hx
+    return hx if platform == "hlx" else (lj if platform == "lingjie" else 0)
+
+
 def owner_doc(platform: str = "") -> str:
     hx = int(CFG.get("fish.owner_uid_hlx", 0) or 0)
     lj = int(CFG.get("fish.owner_uid_lingjie", 0) or 0)
@@ -117,6 +126,16 @@ def favor_context(platform: str, uid: int, nick: str = "") -> str:
             "低于 40 就客气一点。\n")
 
 
+def _partner_doc(platform: str, uid: int, nick: str = "") -> str:
+    me = owner_uid(platform)
+    if not me or not uid:
+        return ""
+    if int(uid) == me:
+        return (f"【当前对话对象】uid {uid}（{nick or '主人'}）就是你的主人。"
+                "回复里必须自然地带「主人」，语气亲近、可以撒娇。\n")
+    return (f"【当前对话对象】uid {uid} 不是主人，不要叫他主人，按普通朋友语气。\n")
+
+
 def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool = True) -> str:
     persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
     name = CFG.get("fish.name", "大肥鱼")
@@ -127,6 +146,7 @@ def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool 
              f"【你现在的平台】{where}",
              mood_context(platform),
              owner_doc(platform),
+             _partner_doc(platform, uid, nick),
              emoji.doc(platform),
              currency_doc(platform),
              memory_block(uid, platform),

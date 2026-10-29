@@ -145,6 +145,8 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
         QTimer.singleShot(2600, self._validate_logins)
+        # 每次打开更新一次生活记忆；之后由自动任务慢循环每小时检查
+        QTimer.singleShot(9000, lambda: self.autopilot._life_tick(force=True))
         self._login_timer = QTimer(self)
         self._login_timer.setInterval(30000)
         self._login_timer.timeout.connect(lambda: self._check_logins(quiet=True))
@@ -254,7 +256,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v7.2 · 桌面合并版")
+        ver = QLabel("v7.3 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

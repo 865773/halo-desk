@@ -71,7 +71,7 @@ class ActivityPage(Page):
         from PySide6.QtWidgets import QLabel
         row.addWidget(QLabel("筛选"))
         self.filter = QComboBox()
-        self.filter.addItems(["全部", "葫芦侠", "灵芥"])
+        self.filter.addItems(["全部", "葫芦侠", "灵芥", "大肥鱼"])
         self.filter.currentIndexChanged.connect(self.render)
         row.addWidget(self.filter)
         row.addStretch(1)
@@ -95,8 +95,12 @@ class ActivityPage(Page):
 
     def render(self) -> None:
         idx = self.filter.currentIndex()
-        platform = {1: "hlx", 2: "lingjie"}.get(idx, "")
-        items = ACT.recent(300, platform)
+        if idx == 3:
+            items = [x for x in ACT.recent(300)
+                     if x.get("kind") == "decision" or not x.get("platform")]
+        else:
+            platform = {1: "hlx", 2: "lingjie"}.get(idx, "")
+            items = ACT.recent(300, platform)
         if not items:
             self.view.setHtml(
                 f"<div style='color:{theme.MUTED};padding:20px'>还没有动态。"
@@ -148,9 +152,11 @@ class ActivityPage(Page):
                             if comment else "")
             reason_html = (f"<div style='color:{theme.MUTED};font-size:11px;margin-top:2px'>"
                            f"理由：{reason}</div>" if reason else "")
+            is_decision = head.get("kind") == "decision"
+            tag_text = "大肥鱼" if is_decision else (plat or "大肥鱼")
             tag = (f"<span style='background:{chip_bg};color:{color};"
                    f"border-radius:6px;padding:1px 6px;font-size:10px'>"
-                   f"{plat or '大肥鱼'}</span> ")
+                   f"{tag_text}</span> ")
             rows.append(
                 f"<div style='margin:6px 0;padding:8px 10px;background:{theme.CARD2};"
                 f"border-radius:8px'>"
