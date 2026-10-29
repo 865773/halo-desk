@@ -150,25 +150,33 @@ def read_lines(path, n: int = 10) -> list[str]:
 
 def remember(text: str, uid: int = 0, platform: str = "",
              force: bool = False, kind: str = "general") -> None:
-    """记一条通用记忆；先让大肥鱼判断值不值得存，再决定写不写。"""
+    """记一条记忆。
+
+    - uid>0：用户记忆一定写入（不做判断）；
+    - 通用记忆：先让大肥鱼判断值不值得存（force=True 时跳过判断）。
+    """
     if not text.strip():
         return
+    store_general = True
     if not force:
         try:
             from .memgate import should_store
             ok, why = should_store(text, platform, uid, kind)
+            store_general = bool(ok)
             if not ok:
                 log(f"[记忆跳过] {why}｜{text[:60]}")
-                return
-            log(f"[记忆理由] {why}｜{text[:60]}")
+            else:
+                log(f"[记忆理由] {why}｜{text[:60]}")
         except Exception:
-            pass
-    target = general_file(platform)
-    append_line(target, text)
+            store_general = True
     if uid:
         uf = _user_file(uid, platform)
         append_line(uf, text)
         maybe_compress(uf, "user")
+    if not store_general:
+        return
+    target = general_file(platform)
+    append_line(target, text)
     _trim(target, int(CFG.get("fish.memory_max", 1500) or 1500))
     maybe_compress(target, "general")
 
@@ -187,7 +195,7 @@ def _trim(path, max_chars: int) -> None:
 _LIMIT_KEYS = {
     "general": ("fish.memory_max", 1500),
     "user": ("fish.user_mem_max", 800),
-    "life": ("fish.life_max", 1200),
+    "life": ("fish.life_max", 4000),
 }
 _COMPRESSING: set[str] = set()
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import ai, imaging, memory, publishing
 from .activity import record
@@ -30,35 +30,52 @@ def gen_life(force: bool = False) -> str:
         return ""
     recent = memory.recent(14, "hlx")
     life_before = memory.recent_life(3)
-    from datetime import datetime as _dt
+    from datetime import datetime, timedelta as _dt
     now = _dt.now()
     hour = now.hour
     if 5 <= hour < 9:
-        period, prev = "清晨", "凌晨/夜里"
+        period = "清晨"
     elif 9 <= hour < 12:
-        period, prev = "上午", "清晨"
+        period = "上午"
     elif 12 <= hour < 14:
-        period, prev = "中午", "上午"
+        period = "中午"
     elif 14 <= hour < 18:
-        period, prev = "下午", "中午"
+        period = "下午"
     elif 18 <= hour < 22:
-        period, prev = "傍晚", "下午"
+        period = "傍晚"
     else:
-        period, prev = "深夜", "傍晚"
+        period = "深夜"
+    # 只取上次记录之后发生的事，写成时间线，不再整天覆盖
+    since = _dt.fromtimestamp(last) if last else (now - timedelta(hours=1))
+    try:
+        from .activity import ACT
+        events = []
+        for it in ACT.recent(120):
+            ts = str(it.get("ts") or "")
+            try:
+                when = _dt.strptime(f"{now.year}-{ts}", "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                continue
+            if when < since:
+                continue
+            events.append(f"{ts[-8:-3]} {it.get('text', '')}")
+        events = events[-20:]
+    except Exception:
+        events = []
+    timeline = "\n".join(events)
     place_hint = random.choice([
         "楼下便利店", "附近公园", "常去的那家小饭馆", "商场", "书店",
         "奶茶店", "河边", "朋友家", "夜市", "电影院",
-    ]) if random.random() < 0.6 else ""
-    span = (f"可以合理补充今天出门的细节（比如去了{place_hint}、逛街、买吃的），"
-            if place_hint else "可以合理补充今天的日常细节（宅家、追剧、收拾房间），")
+    ]) if random.random() < 0.5 else ""
     try:
         out = ai.ask(
-            "用第一人称写一段生活记录，3~5 句，口语，像日记，要有具体场景。"
+            "根据下面这段时间真实发生的事，写 2~4 条生活时间线。"
+            "每条一行，格式必须是：[HH:MM] 发生了什么（第一人称、口语、具体场景）。"
+            "只写这些事，按时间先后，不要总结整天，不要复述更早的记录。"
             f"现在是 {now.strftime('%H:%M')}（{period}）。"
-            f"先写「{prev}」那段时间在做什么、去了哪里，再写现在在做什么；"
-            f"{span}保持和之前的记录连贯，不要夸张、不要像作文。",
-            (recent + "\n【之前的生活记录】\n" + life_before).strip()
-            or f"今天是 {now.strftime('%Y-%m-%d')}，还没有特别的事。",
+            + (f"可以自然补充一两句宅家/出门的细节（比如{place_hint}）。"
+               if place_hint else ""),
+            (timeline or recent or "这段时间没发生什么特别的事。").strip(),
             CFG.get("ai.model_basic"))
     except Exception as e:
         DBG.log("LIFE", f"生成生活记录失败：{e}", "WARN")
@@ -67,10 +84,20 @@ def gen_life(force: bool = False) -> str:
     if not text:
         return ""
     memory.reset_life_if_new_day()
-    memory.life_append(f"[{period}] " + text[:400])
+    lines = []
+    for ln in text.splitlines():
+        ln = ln.strip().lstrip("-•· ").strip()
+        if not ln:
+            continue
+        if not ln.startswith("["):
+            ln = f"[{now.strftime('%H:%M')}] {ln}"
+        lines.append(ln)
+    if not lines:
+        lines = [f"[{now.strftime('%H:%M')}] {text[:300]}"]
+    memory.life_append("\n".join(lines)[:800])
     CFG.set("fish.life_at", time.time())
     CFG.save()
-    DBG.log("LIFE", f"生活记录已更新（{period}）")
+    DBG.log("LIFE", f"生活记录已更新（{period}，{len(lines)} 条）")
     return text
 
 
