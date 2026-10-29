@@ -102,15 +102,20 @@ class HlxPage(Page):
             "使用葫芦侠账号登录（手机号 + 密码）。密码只保存在本机配置文件里。"))
         row = QHBoxLayout()
         row.setSpacing(10)
-        self.phone = QLineEdit()
+        self.phone = QLineEdit(cfg.get("hlx.phone", "") or "")
         self.phone.setPlaceholderText("手机号")
         self.phone.setFixedWidth(200)
         self.pwd = QLineEdit()
         self.pwd.setPlaceholderText("密码")
         self.pwd.setEchoMode(QLineEdit.Password)
+        if cfg.get("hlx.password", "") and cfg.get("general.remember_pwd", True):
+            self.pwd.setText(cfg.get("hlx.password", ""))
         self.pwd.returnPressed.connect(self.login)
         row.addWidget(self.phone)
         row.addWidget(self.pwd)
+        self.remember = QCheckBox("记住密码")
+        self.remember.setChecked(bool(cfg.get("general.remember_pwd", True)))
+        row.addWidget(self.remember)
         self.login_btn = common.button("登录", primary=True)
         self.login_btn.clicked.connect(self.login)
         row.addWidget(self.login_btn)
@@ -176,11 +181,22 @@ class HlxPage(Page):
 
     def _on_login(self, user) -> None:
         common.toast(self.app, f"登录成功，欢迎 {user.get('nick', '')}", "ok")
+        remember = True
+        try:
+            remember = self.remember.isChecked()
+        except Exception:
+            pass
+        self.app.cfg.set("general.remember_pwd", remember)
+        if not remember:
+            self.app.cfg.set("hlx.password", "")
+        self.app.cfg.save()
         self._build_account()
         self.app.notify_accounts()
 
     def _on_login_fail(self, msg: str) -> None:
-        self._build_account()
+        # 不清空输入的账号密码，只恢复按钮
+        self.login_btn.setEnabled(True)
+        self.login_btn.setText("登录")
         common.toast(self.app, f"登录失败：{msg}", "err")
 
     def logout(self) -> None:

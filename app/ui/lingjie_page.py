@@ -103,15 +103,20 @@ class LingjiePage(Page):
         self.mode.setFixedWidth(120)
         self.mode.currentIndexChanged.connect(self._on_mode)
         row.addWidget(self.mode)
-        self.phone = QLineEdit()
+        self.phone = QLineEdit(cfg.get("lingjie.phone", "") or "")
         self.phone.setPlaceholderText("手机号")
         self.phone.setFixedWidth(190)
         row.addWidget(self.phone)
         self.cred = QLineEdit()
         self.cred.setPlaceholderText("密码")
         self.cred.setEchoMode(QLineEdit.Password)
+        if cfg.get("lingjie.password", "") and cfg.get("general.remember_pwd", True):
+            self.cred.setText(cfg.get("lingjie.password", ""))
         self.cred.returnPressed.connect(self.login)
         row.addWidget(self.cred, 1)
+        self.remember = QCheckBox("记住密码")
+        self.remember.setChecked(bool(cfg.get("general.remember_pwd", True)))
+        row.addWidget(self.remember)
         self.code_btn = common.button("发送验证码")
         self.code_btn.clicked.connect(self.send_code)
         self.code_btn.hide()
@@ -136,7 +141,6 @@ class LingjiePage(Page):
             self.cred.setPlaceholderText("粘贴 access token")
             self.cred.setEchoMode(QLineEdit.Normal)
             self.phone.hide()
-        self.cred.clear()
 
     def send_code(self) -> None:
         phone = self.phone.text().strip()
@@ -185,6 +189,18 @@ class LingjiePage(Page):
     def _on_login(self, info) -> None:
         self.login_btn.setEnabled(True)
         self.login_btn.setText("登录")
+        remember = True
+        try:
+            remember = self.remember.isChecked()
+        except Exception:
+            pass
+        self.app.cfg.set("general.remember_pwd", remember)
+        self.app.cfg.set("lingjie.phone", self.phone.text().strip())
+        if remember and self.mode.currentIndex() == 0:
+            self.app.cfg.set("lingjie.password", self.cred.text())
+        else:
+            self.app.cfg.set("lingjie.password", "")
+        self.app.cfg.save()
         nick = self.app.cfg.get("lingjie.nickname", "") or (info or {}).get("nickname", "")
         common.toast(self.app, f"登录成功，欢迎 {nick}", "ok")
         self._build_account()

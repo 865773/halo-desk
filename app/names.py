@@ -108,6 +108,14 @@ def from_activity(platform: str) -> int:
     return n
 
 
+def ensure(platform: str) -> int:
+    """登录后调用：把关系/动态里的昵称补进当前账号的索引。"""
+    try:
+        return from_relations(platform) + from_activity(platform)
+    except Exception:
+        return 0
+
+
 def _mem_files(platform: str):
     try:
         from .memory import list_user_files

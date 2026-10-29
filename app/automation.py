@@ -265,6 +265,7 @@ def run_intents(intents: list[str], hlx=None, lj=None, max_steps: int | None = N
 class AutoPilot(QObject):
     log = Signal(str)
     replied = Signal(str, str, str)   # platform, nick, text
+    incoming = Signal(str, str, str)  # platform, nick, message
     state_changed = Signal()
 
     def __init__(self, app):
@@ -325,7 +326,7 @@ class AutoPilot(QObject):
             if CFG.get("autopost.enabled", False):
                 started.append(f"自动发帖 {int(CFG.get('autopost.interval_hours', 6) or 6)}h")
             if CFG.get("autopost.diary_enabled", False):
-                started.append("每日日记")
+                started.append(f"日记检查（{CFG.get('autopost.diary_time', '23:00')} 发送）")
         else:
             self.post_timer.stop()
         if CFG.get("auto.enabled", False) and CFG.get("ai.key", ""):
@@ -556,6 +557,11 @@ class AutoPilot(QObject):
             for c in cands:
                 if done >= limit:
                     break
+                try:
+                    self.incoming.emit(platform, c.get("nick", ""),
+                                       str(c.get("text") or "")[:80])
+                except Exception:
+                    pass
                 # 服务端二次校验：这条消息是不是已经回过了
                 pid = c.get("pid") or c.get("tid")
                 try:

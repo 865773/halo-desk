@@ -65,6 +65,11 @@ class UserMemoryCard(common.Card):
             self.view.setPlainText(
                 "还没登录这个平台。\n登录对应账号后，会显示该账号自己的用户记忆。")
             return
+        try:
+            from .. import names
+            names.ensure(self.platform)
+        except Exception:
+            pass
         from ..memory import list_user_files
         files = sorted(list_user_files(self.platform),
                        key=lambda p: p.stat().st_mtime, reverse=True)

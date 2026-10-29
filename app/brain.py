@@ -145,7 +145,7 @@ def intent_prompt() -> str:
     persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
     return "\n".join([
         persona,
-        mood_context(platform),
+        mood_context(),
         owner_doc(),
         memory_block(),
         "【现在要做决定】又到了你自由活动的时间。你可以：",
@@ -228,7 +228,7 @@ def random_reply_gap() -> float:
 
 def _choose(prompt: str, options: list[str], default: str) -> tuple[str, str]:
     from .net import json_of
-    sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context(platform)
+    sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context()
     ask = (prompt + "\n可选：" + " / ".join(options) +
            '\n只输出一行 JSON：{"choice":"上面某一个选项","reason":"为什么这么选（一句话）"}')
     for _ in range(2):

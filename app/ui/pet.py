@@ -59,6 +59,20 @@ class PetWindow(QWidget):
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
 
         self._pix = QPixmap(resource("assets/dafeiyu.png"))
+        self._faces = {}
+        for key, name in (("idle", "idle.jpg"), ("happy", "happy.png"),
+                          ("eat", "eat.jpg"), ("angry", "angry.jpg"),
+                          ("sleep", "sleep.jpg"), ("sad", "sad.jpg"),
+                          ("hello", "hello.png")):
+            p = resource(f"assets/pet/{name}")
+            pm = QPixmap(p)
+            if not pm.isNull():
+                self._faces[key] = pm
+        if "idle" in self._faces:
+            self._pix = self._faces["idle"]
+        self._face_timer = QTimer(self)
+        self._face_timer.setSingleShot(True)
+        self._face_timer.timeout.connect(self._reset_face)
         self._base = int(CFG.get("fish.size", 150))
         self._pad = 18
         self._bob = 0.0
@@ -83,6 +97,20 @@ class PetWindow(QWidget):
 
     def apply_settings(self) -> None:
         self._apply_size()
+
+    def set_face(self, name: str, revert_ms: int = 5000) -> None:
+        pm = self._faces.get(name)
+        if pm is not None:
+            self._pix = pm
+            self.update()
+        if revert_ms > 0:
+            self._face_timer.start(revert_ms)
+
+    def _reset_face(self) -> None:
+        pm = self._faces.get("idle")
+        if pm is not None:
+            self._pix = pm
+            self.update()
 
     def show_near_default(self) -> None:
         x = CFG.get("fish.pos_x", -1)
@@ -200,12 +228,13 @@ class PetWindow(QWidget):
     def _pat(self) -> None:
         from .. import memory
         memory.nudge_mood(3, "hlx", "被摸了摸头")
+        self.set_face("happy", 6000)
         self.say("唔…摸头的话，尾巴会自己甩起来的。")
-        self._animate_once()
 
     def _feed(self) -> None:
         from .. import memory
         memory.nudge_mood(5, "hlx", "吃到了白米饭")
+        self.set_face("eat", 6000)
         self.say("白米饭！最喜欢了，再来一碗也吃得下。")
 
     def _animate_once(self) -> None:

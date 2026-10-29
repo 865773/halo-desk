@@ -137,11 +137,31 @@ class MainWindow(QMainWindow):
 
         self._build_tray()
         self.autopilot.replied.connect(self._on_pet_reply)
+        self.autopilot.incoming.connect(self._on_pet_incoming)
         self.show_page(CFG.get("general.page", "home") or "home")
         self._refresh_sidebar_status()
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
         QTimer.singleShot(2600, self._validate_logins)
+        self._ui_timer = QTimer(self)
+        self._ui_timer.setInterval(20000)
+        self._ui_timer.timeout.connect(self._light_refresh)
+        self._ui_timer.start()
+
+    def _light_refresh(self) -> None:
+        """轻量刷新当前页（只读本地数据，不请求网络）。"""
+        cur = self.stack.currentWidget()
+        if cur is self.pages.get("home"):
+            cur.refresh()
+
+    def _on_pet_incoming(self, platform: str, nick: str, text: str) -> None:
+        if self.pet is None or not self.pet.isVisible():
+            return
+        if not CFG.get("auto.pet_notify", True):
+            return
+        where = "葫芦侠" if platform == "hlx" else "灵芥"
+        self.pet.set_face("hello", 5000)
+        self.pet.say(f"{where}·{nick}：{text}", 8000)
 
     def _on_pet_reply(self, platform: str, nick: str, text: str) -> None:
         if self.pet is None or not self.pet.isVisible():
@@ -149,7 +169,8 @@ class MainWindow(QMainWindow):
         if not CFG.get("auto.pet_notify", True):
             return
         where = "葫芦侠" if platform == "hlx" else "灵芥"
-        self.pet.say(f"{where}上 {nick} 找我，我回了句：{text}", 6000)
+        self.pet.set_face("happy", 5000)
+        self.pet.say(f"我回了 {nick}：{text}", 6000)
 
     # ---------- UI ----------
     def _build_sidebar(self) -> QWidget:
@@ -186,7 +207,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v6.2 · 桌面合并版")
+        ver = QLabel("v6.3 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -242,6 +263,9 @@ class MainWindow(QMainWindow):
             from ..relations import REL
             REL.rekey("hlx")
             REL.rekey("lingjie")
+            from .. import names
+            names.ensure("hlx")
+            names.ensure("lingjie")
         except Exception:
             pass
         self._refresh_sidebar_status()
