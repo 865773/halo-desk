@@ -544,6 +544,10 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
         action = str(obj.get("action") or "nothing").strip()
         if action not in ACTIONS:
             action = "nothing"
+        # 同一条帖子：回复本身就是评论，不再额外发一条帖子评论
+        tgt0 = obj.get("target") or {}
+        if "comment" in action and str(tgt0.get("kind") or "current") == "current":
+            action = "nothing"
         executed = None
         if action != "nothing":
             tgt = obj.get("target") or {}

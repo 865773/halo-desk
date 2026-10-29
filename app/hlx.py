@@ -209,23 +209,64 @@ class HlxClient:
         return obj.get("post") or {}
 
     def comments(self, post_id: int, page: int = 1) -> list[dict]:
-        post = self.post_detail(post_id)
-        return [c for c in (post.get("comments") or []) if isinstance(c, dict)]
-
-    def has_my_comment(self, post_id: int, since_ms: int = 0, pages: int = 2) -> bool:
-        """这个帖子下有没有我发的评论（since_ms>0 时只看这之后的）。"""
+        """评论列表：post/detail 的顶层 comments（回复在 refComment 里）。"""
         try:
+            obj = self._json(self._get(
+                f"{BASE}/post/detail/ANDROID/4.1.8?{self.auth()}"
+                f"&post_id={post_id}&page={page}"))
+        except Exception:
+            return []
+        return [c for c in (obj.get("comments") or []) if isinstance(c, dict)]
+
+    def has_my_comment(self, post_id: int, since_ms: int = 0, pages: int = 3,
+                       parent_cid: int = 0, text: str = "") -> bool:
+        """这个帖子下有没有我发的评论 / 我有没有回过这条评论。"""
+        try:
+            body = " ".join(str(text or "").split())
             for page in range(1, pages + 1):
                 for c in self.comments(post_id, page):
                     u = c.get("user") or {}
                     if int((u or {}).get("userID", 0) or 0) != self.uid:
                         continue
-                    ct = int(c.get("createTime", 0) or 0)
-                    if since_ms <= 0 or ct >= since_ms:
+                    if parent_cid:
+                        ref = c.get("refComment") or {}
+                        rid = int((ref or {}).get("commentID", 0) or 0) \
+                            if isinstance(ref, dict) else 0
+                        if rid != int(parent_cid):
+                            continue
+                        if body:
+                            ct = " ".join(str(c.get("text") or "").split())
+                            if ct and ct != body:
+                                continue
                         return True
+                    ct = int(c.get("createTime", 0) or 0)
+                    if since_ms > 0 and ct and ct < since_ms:
+                        continue
+                    return True
         except Exception:
             pass
         return False
+
+    def find_my_reply(self, post_id: int, parent_cid: int, text: str = "") -> bool:
+        return self.has_my_comment(post_id, parent_cid=parent_cid, text=text)
+
+    def reply_target(self, post_id: int, cid: int) -> int:
+        """回复的父评论：如果目标是“回复的回复”，挂到它所属的根评论下。"""
+        cid = int(cid or 0)
+        if not cid:
+            return 0
+        try:
+            for page in range(1, 4):
+                for c in self.comments(post_id, page):
+                    if int(c.get("commentID", 0) or 0) != cid:
+                        continue
+                    ref = c.get("refComment") or {}
+                    rid = int((ref or {}).get("commentID", 0) or 0) \
+                        if isinstance(ref, dict) else 0
+                    return rid or cid
+        except Exception:
+            pass
+        return cid
 
     # ---------- 互动 ----------
     def praise(self, post_id: int) -> bool:

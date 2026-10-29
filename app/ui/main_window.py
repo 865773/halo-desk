@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v8.2 · 桌面合并版")
+        ver = QLabel("v8.3 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
