@@ -30,7 +30,6 @@ class FishPage(Page):
                          "人设、记忆、生图、发帖、挂件，都在这一页。")
         self.history: list[tuple[str, str]] = []
         self._boards: list[tuple[int, str]] = []
-        self._build_image()
         self._build_persona()
         self._build_publish()
         self._build_manage()
@@ -181,38 +180,25 @@ class FishPage(Page):
                                    if CFG.get("fish.img_model") else "wan2.6-t2i")
 
     def save_image(self) -> None:
-        CFG.set("fish.img_proto", self.img_proto.currentData())
-        CFG.set("fish.img_url", self.img_url.text().strip())
-        CFG.set("fish.img_key", self.img_key.text().strip())
-        CFG.set("fish.img_model", self.img_model.text().strip())
-        CFG.set("fish.img_size", self.img_size.currentText().strip())
+        # 生图配置已移到「设置 → 文生图」
         CFG.save()
-        self.img_state.setText("已保存")
-        common.toast(self.app, "生图配置已保存", "ok")
-        DBG.log("IMG", f"配置已更新：{self.img_proto.currentData()} / {self.img_model.text()}")
 
     def test_image(self) -> None:
-        self.save_image()
-        prompt = self.img_prompt.text().strip() or "一只蓝色的小鲸鱼女孩，清新可爱，白色背景"
-        self.img_state.setText("生成中…")
+        prompt = "一只蓝色的小鲸鱼女孩，清新可爱，白色背景"
 
         def work(_e):
             return imaging.generate(prompt)
 
         def done(png):
             if not png:
-                self.img_state.setText("失败")
                 common.toast(self.app, "生图失败，看「调试」页的日志", "err")
                 return
-            path = imaging.save_last(png, "test_image.png")
-            self.show_preview(path)
-            self.img_state.setText(f"成功（{len(png) // 1024} KB）")
+            imaging.save_last(png, "test_image.png")
             common.toast(self.app, "生图成功", "ok")
             from ..activity import record
             record("genimg", f"测试生图：{prompt[:24]}")
 
         def fail(msg):
-            self.img_state.setText("失败")
             common.toast(self.app, f"生图失败：{msg}", "err")
 
         common.run_bg(work, done, fail)

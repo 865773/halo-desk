@@ -629,6 +629,19 @@ class AutoPilot(QObject):
                 gap = brain.random_reply_gap()
                 DBG.log("REPLY", f"等待 {gap:.1f} 秒再回复 {c['nick']}")
                 time.sleep(gap)
+                # 发送前最后再查一次服务端，特别是灵芥
+                if platform == "lingjie":
+                    try:
+                        if self.lj.find_my_reply(c["tid"], c["cid"], text):
+                            if c["cid"] not in self.state[seen_key]:
+                                self.state[seen_key].append(c["cid"])
+                            self.state["reply_keys"] = (
+                                list(self.state.get("reply_keys", [])) + [rkey])[-800:]
+                            _save_state(self.state)
+                            DBG.log("REPLY", f"灵芥上已经回过 {c['nick']}，跳过")
+                            continue
+                    except Exception:
+                        pass
                 # 先乐观标记，防止并发/重入重复回复
                 if c["cid"] not in self.state[seen_key]:
                     self.state[seen_key].append(c["cid"])

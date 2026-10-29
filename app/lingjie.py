@@ -241,17 +241,67 @@ class LingjieClient:
     def comments(self, tid: int) -> list[dict]:
         obj = self._get("/theme/comment/list", f"tid={tid}")
         data = obj.get("data") or {}
-        return [c for c in (data.get("records") or []) if isinstance(c, dict)]
+        records = data.get("records") or data.get("list") or []
+        return self._flatten_comments(records)
+
+    def _flatten_comments(self, records, depth: int = 0) -> list[dict]:
+        out: list[dict] = []
+        for c in records or []:
+            if not isinstance(c, dict):
+                continue
+            out.append(c)
+            if depth < 3:
+                for key in ("children", "replyList", "replies", "reply_list"):
+                    kids = c.get(key)
+                    if isinstance(kids, list):
+                        out.extend(self._flatten_comments(kids, depth + 1))
+        return out
+
+    @staticmethod
+    def _parent_of(c: dict) -> int:
+        for k in ("parent_id", "parentId", "pid", "reply_id", "replyId"):
+            try:
+                v = int(c.get(k, 0) or 0)
+            except Exception:
+                v = 0
+            if v:
+                return v
+        return 0
+
+    def find_my_reply(self, tid: int, parent_cid: int, text: str = "") -> bool:
+        """帖子下是否已经有我对这条评论的回复（兼容嵌套结构）。"""
+        try:
+            uid = int(self.uid or 0)
+            body = " ".join(str(text or "").split())
+            for c in self.comments(tid):
+                u = c.get("user") or c.get("author") or {}
+                cuid = int((u or {}).get("uid", 0) or c.get("uid", 0) or 0)
+                if uid and cuid != uid:
+                    continue
+                if not uid and not c.get("is_mine"):
+                    continue
+                par = self._parent_of(c)
+                content = " ".join(str(c.get("content") or c.get("commentContent") or "").split())
+                same_text = bool(body and content and content == body)
+                if parent_cid and par == int(parent_cid):
+                    return True
+                # 接口可能把回复挂成一级评论：同样内容也算已回
+                if same_text and (not parent_cid or par in (0, int(parent_cid))):
+                    return True
+        except Exception:
+            pass
+        return False
 
     def has_my_comment(self, tid: int, parent_cid: int = 0, since_ms: int = 0) -> bool:
         """这个帖子/这条评论下有没有我的评论。"""
         try:
+            uid = int(self.uid or 0)
             for c in self.comments(tid):
-                u = c.get("user") or {}
-                uid = int((u or {}).get("uid", 0) or 0)
-                if uid != self.uid:
+                u = c.get("user") or c.get("author") or {}
+                cuid = int((u or {}).get("uid", 0) or c.get("uid", 0) or 0)
+                if uid and cuid != uid:
                     continue
-                if parent_cid and int(c.get("parent_id", 0) or 0) != parent_cid:
+                if parent_cid and self._parent_of(c) != int(parent_cid):
                     continue
                 ct = int(c.get("create_time", 0) or 0)
                 if since_ms > 0 and ct and ct < since_ms:

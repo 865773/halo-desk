@@ -9,7 +9,7 @@ from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                                QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                               QSpinBox, QVBoxLayout)
+                               QSpinBox, QVBoxLayout, QWidget)
 
 from .. import memory
 from ..config import CFG, data_dir
@@ -179,13 +179,19 @@ class SettingsPage(Page):
         self.ai_key.setEchoMode(QLineEdit.Password)
         self.ai_key.setPlaceholderText("DeepSeek API Key（sk-...）")
         self.ai_key.editingFinished.connect(self._save_ai)
-        ai.box.addWidget(self.ai_key)
-        crow = QHBoxLayout()
+        self.ds_box = QWidget()
+        ds_lay = QVBoxLayout(self.ds_box)
+        ds_lay.setContentsMargins(0, 0, 0, 0)
+        ds_lay.addWidget(self.ai_key)
+        ai.box.addWidget(self.ds_box)
+
+        self.custom_box = QWidget()
+        cb_lay = QVBoxLayout(self.custom_box)
+        cb_lay.setContentsMargins(0, 0, 0, 0)
         self.ai_base = QLineEdit(CFG.get("ai.custom_base", ""))
         self.ai_base.setPlaceholderText("自定义接口地址，例如 https://api.openai.com/v1")
         self.ai_base.editingFinished.connect(self._save_ai)
-        crow.addWidget(self.ai_base, 1)
-        ai.box.addLayout(crow)
+        cb_lay.addWidget(self.ai_base)
         crow2 = QHBoxLayout()
         self.ai_ckey = QLineEdit(CFG.get("ai.custom_key", ""))
         self.ai_ckey.setEchoMode(QLineEdit.Password)
@@ -200,13 +206,58 @@ class SettingsPage(Page):
         self.ai_cvision.setPlaceholderText("看图模型名（可空）")
         self.ai_cvision.editingFinished.connect(self._save_ai)
         crow2.addWidget(self.ai_cvision, 1)
-        ai.box.addLayout(crow2)
+        cb_lay.addLayout(crow2)
+        ai.box.addWidget(self.custom_box)
+        self._sync_ai_boxes()
         trow = QHBoxLayout()
         trow.addWidget(common.button("测试 AI", primary=True, on_click=self._test_ai))
         self.ai_state = common.muted("")
         trow.addWidget(self.ai_state, 1)
         ai.box.addLayout(trow)
         self.body.addWidget(ai)
+
+        # ---------- 文生图 ----------
+        img = common.Card(padding=20, spacing=10)
+        img.box.addWidget(common.card_title("文生图"))
+        img.box.addWidget(common.hint(
+            "默认阿里云百炼：一键填入地址和模型，只贴 Key；"
+            "不配也能用，只是发帖不带图。"))
+        img.box.addWidget(common.button("一键填入阿里云（百炼）", primary=True,
+                                        on_click=self._fill_aliyun))
+        self.img_proto = QComboBox()
+        for value, label in (("dashscope", "阿里云 DashScope"),
+                             ("openai", "OpenAI 兼容"),
+                             ("sd", "Stable Diffusion")):
+            self.img_proto.addItem(label, value)
+        cur = CFG.get("fish.img_proto", "dashscope")
+        self.img_proto.setCurrentIndex(max(0, self.img_proto.findData(cur)))
+        img.box.addWidget(self.img_proto)
+        self.img_url = QLineEdit(CFG.get("fish.img_url", ""))
+        self.img_url.setPlaceholderText("接口地址")
+        self.img_url.editingFinished.connect(self._save_image)
+        img.box.addWidget(self.img_url)
+        irow = QHBoxLayout()
+        self.img_key = QLineEdit(CFG.get("fish.img_key", ""))
+        self.img_key.setEchoMode(QLineEdit.Password)
+        self.img_key.setPlaceholderText("生图 API Key")
+        self.img_key.editingFinished.connect(self._save_image)
+        irow.addWidget(self.img_key, 2)
+        self.img_model = QLineEdit(CFG.get("fish.img_model", "wan2.6-t2i"))
+        self.img_model.setPlaceholderText("当前模型")
+        self.img_model.editingFinished.connect(self._save_image)
+        irow.addWidget(self.img_model, 1)
+        img.box.addLayout(irow)
+        self.img_models = QLineEdit(CFG.get("fish.img_models", ""))
+        self.img_models.setPlaceholderText("备用模型，逗号分隔")
+        self.img_models.editingFinished.connect(self._save_image)
+        img.box.addWidget(self.img_models)
+        itest = QHBoxLayout()
+        itest.addWidget(common.button("测试文生图", primary=True,
+                                      on_click=self._test_image))
+        self.img_state = common.muted("")
+        itest.addWidget(self.img_state, 1)
+        img.box.addLayout(itest)
+        self.body.addWidget(img)
 
         paths = common.Card(padding=20, spacing=10)
         paths.box.addWidget(common.card_title("目录"))
@@ -259,13 +310,17 @@ class SettingsPage(Page):
             "大肥鱼桌面版是把 hlx-halo（葫芦侠三楼）和 lingjie-halo（灵芥空间）"
             "两个 Android 项目合并移植成的 Windows 桌面程序。"))
         link = QLabel(
+            '作者：<a style="color:{c}" href="https://gitee.com/guo-wenlong">dudu</a><br>'
             '本项目：<a style="color:{c}" href="https://gitee.com/guo-wenlong/halo-desk">'
             'gitee.com/guo-wenlong/halo-desk</a><br>'
-            '葫芦侠三楼主页：<a style="color:{c}" href="https://www.huluxia.com">'
-            'www.huluxia.com</a><br>'
-            '灵芥助手主页：<a style="color:{c}" href="https://gitee.com/guo-wenlong/lingjie-halo">'
+            '葫芦侠大肥鱼：<a style="color:{c}" href="https://gitee.com/guo-wenlong/hlx-halo">'
+            'gitee.com/guo-wenlong/hlx-halo</a><br>'
+            '灵芥助手：<a style="color:{c}" href="https://gitee.com/guo-wenlong/lingjie-halo">'
             'gitee.com/guo-wenlong/lingjie-halo</a><br>'
-            '作者：<b>dudu</b>'.replace("{c}", theme.ACCENT))
+            '葫芦侠地址：<a style="color:{c}" href="https://www.huluxia.com">'
+            'www.huluxia.com</a><br>'
+            '灵芥空间地址：<a style="color:{c}" href="https://www.lingjie888.cn">'
+            'www.lingjie888.cn</a>'.replace("{c}", theme.ACCENT))
         link.setOpenExternalLinks(True)
         link.setTextInteractionFlags(Qt.TextBrowserInteraction)
         about.box.addWidget(link)
@@ -376,7 +431,49 @@ class SettingsPage(Page):
         lay.addWidget(QLabel("谢谢支持～"))
         dlg.exec()
 
+    def _sync_ai_boxes(self) -> None:
+        custom = self.ai_provider.currentIndex() == 1
+        self.ds_box.setVisible(not custom)
+        self.custom_box.setVisible(custom)
+
+    def _fill_aliyun(self) -> None:
+        self.img_proto.setCurrentIndex(max(0, self.img_proto.findData("dashscope")))
+        self.img_url.setText(
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/"
+            "multimodal-generation/generation")
+        self.img_model.setText("wan2.6-t2i")
+        self.img_models.setText("wan2.5-t2i-preview,wanx2.1-t2i-turbo")
+        self._save_image()
+        common.toast(self.app, "已填入阿里云地址和模型，贴 Key 即可", "ok")
+
+    def _save_image(self, *_a) -> None:
+        CFG.set("fish.img_proto", self.img_proto.currentData())
+        CFG.set("fish.img_url", self.img_url.text().strip())
+        CFG.set("fish.img_key", self.img_key.text().strip())
+        CFG.set("fish.img_model", self.img_model.text().strip())
+        CFG.set("fish.img_models", self.img_models.text().strip())
+        CFG.save()
+
+    def _test_image(self) -> None:
+        self._save_image()
+        self.img_state.setText("生成中…")
+        from .common import run_bg
+
+        def work(_e):
+            from .. import imaging
+            return imaging.generate("一只蓝白配色、鲸鱼耳朵的可爱少女，柔和光线")
+
+        def done(png):
+            self.img_state.setText(f"可用 ✔（{len(png) // 1024} KB）" if png
+                                   else "生成失败")
+
+        def fail(e):
+            self.img_state.setText(f"失败：{e}")
+
+        run_bg(work, done, fail)
+
     def _save_ai(self, *_a) -> None:
+        self._sync_ai_boxes()
         CFG.set("ai.provider",
                 "custom" if self.ai_provider.currentIndex() == 1 else "deepseek")
         CFG.set("ai.key", self.ai_key.text().strip())
