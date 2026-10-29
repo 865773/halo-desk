@@ -112,6 +112,11 @@ DEFAULTS: dict = {
         "pos_x": -1,
         "pos_y": -1,
         "persona": "",
+        "appearance": (
+            "蓝色的长卷发，发尾渐变成浅海蓝色，头顶有一撮翘起来的呆毛；"
+            "一对深蓝色的鲸鱼耳朵，身后拖着一条鲸鱼尾巴，开心的时候尾巴会甩；"
+            "平时穿蓝白配色的女仆装，白色荷叶边头饰，围裙上绣着一只小鲸鱼；"
+            "大眼睛，笑起来脸会红红的"),
         "tags": "仿真,真人感,甜美,粘人",
         "interval_min": 20,
         "life_refresh_min": 360,
@@ -167,7 +172,7 @@ DEFAULTS: dict = {
         "diary_board_id": 0,
         "diary_board_name": "",
         "diary_day": "",
-        "diary_time": "22:00",
+        "diary_time": "23:00",
     },
     "debug": {
         "http": True,

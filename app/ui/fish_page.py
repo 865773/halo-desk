@@ -266,6 +266,27 @@ class FishPage(Page):
         card.box.addLayout(row2)
         self.body.addWidget(card)
 
+        # ---------- 形象（配图用） ----------
+        appear = common.Card(padding=20, spacing=10)
+        appear.box.addWidget(common.card_title("形象（生成配图用）"))
+        appear.box.addWidget(common.hint(
+            "写清楚发色、耳朵/尾巴、服装、配饰。配图提示词会原样带上这段，"
+            "改完保存即可，下一张图生效。"))
+        self.appear_edit = QPlainTextEdit()
+        self.appear_edit.setPlainText(CFG.get("fish.appearance", ""))
+        self.appear_edit.setMinimumHeight(110)
+        appear.box.addWidget(self.appear_edit)
+        arow = QHBoxLayout()
+        save_a = common.button("保存形象", primary=True)
+        save_a.clicked.connect(self.save_appearance)
+        arow.addWidget(save_a)
+        reset_a = common.button("恢复默认", ghost=True)
+        reset_a.clicked.connect(self.reset_appearance)
+        arow.addWidget(reset_a)
+        arow.addStretch(1)
+        appear.box.addLayout(arow)
+        self.body.addWidget(appear)
+
     def save_persona(self) -> None:
         CFG.set("fish.name", self.fish_name.text().strip() or "大肥鱼")
         CFG.set("fish.persona", self.persona_edit.toPlainText().strip())
@@ -275,6 +296,16 @@ class FishPage(Page):
     def reset_persona(self) -> None:
         self.persona_edit.setPlainText(persona.DEFAULT_PERSONA)
         common.toast(self.app, "已恢复默认人设，记得点保存", "info")
+
+    def save_appearance(self) -> None:
+        CFG.set("fish.appearance", self.appear_edit.toPlainText().strip())
+        CFG.save()
+        common.toast(self.app, "形象已保存，下一张配图生效", "ok")
+
+    def reset_appearance(self) -> None:
+        from ..config import DEFAULTS
+        self.appear_edit.setPlainText(DEFAULTS["fish"]["appearance"])
+        common.toast(self.app, "已恢复默认形象，记得点保存", "info")
 
     # ---------- 挂件 ----------
     def _build_pet(self) -> None:

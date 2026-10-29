@@ -25,6 +25,19 @@ def resolve_post_board(platform: str, boards: list[tuple[int, str]]) -> tuple[in
     return (0, "")
 
 
+def is_allowed_board(platform: str, name: str) -> bool:
+    return any(w in (name or "") for w in POST_BOARD_NAMES.get(platform, ()))
+
+
+def forced_board(platform: str, client) -> tuple[int, str]:
+    """发帖只允许泳池/闲聊：每次都按真实板块列表重新解析，忽略调用方传的 id。"""
+    try:
+        boards = client.boards() if platform == "hlx" else client.forums()
+    except Exception:
+        boards = []
+    return resolve_post_board(platform, boards)
+
+
 def image_ready() -> bool:
     """文生图配置是否可用（有地址或 Key，SD 只要有地址）。"""
     proto = (CFG.get("fish.img_proto", "openai") or "openai").strip()

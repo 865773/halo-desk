@@ -310,6 +310,8 @@ class AutoPilot(QObject):
             self.intent_timer.stop()
         if started:
             DBG.log("AUTO", "自动任务已启动：" + "，".join(started))
+        # 打开就检查一次生活记忆：距上次 ≥6 小时才生成，否则跳过
+        QTimer.singleShot(7000, self._life_tick)
 
     def stop(self) -> None:
         self.poll_timer.stop()
@@ -847,29 +849,35 @@ class AutoPilot(QObject):
         if not CFG.get("ai.key", ""):
             self.log.emit("✗ 写日记需要先配置 DeepSeek Key")
             return
-        platform = CFG.get("autopost.diary_platform", "hlx") or "hlx"
-        if platform == "hlx" and not CFG.get("hlx.key", ""):
-            self.log.emit("✗ 写日记需要先登录葫芦侠")
-            return
-        if platform == "lingjie" and not CFG.get("lingjie.token", ""):
-            self.log.emit("✗ 写日记需要先登录灵芥")
+        targets = []
+        if CFG.get("hlx.key", ""):
+            targets.append("hlx")
+        if CFG.get("lingjie.token", ""):
+            targets.append("lingjie")
+        if not targets:
+            self.log.emit("✗ 两个平台都没登录")
             return
         self._post_busy = True
-        board_id = int(CFG.get("autopost.diary_board_id", 0) or 0)
-        board_name = CFG.get("autopost.diary_board_name", "") or ""
-        self.log.emit("— 开始写日记" + ("（试运行，不发布）" if dry_run else "") + " —")
+        self.log.emit("— 开始写日记（" + "、".join(
+            "葫芦侠" if p == "hlx" else "灵芥" for p in targets) + "）"
+            + ("（试运行，不发布）" if dry_run else "") + " —")
 
         def work(_e):
             from .diary import write_diary
-            return write_diary(platform, board_id, board_name, dry_run=dry_run)
+            return [(p, write_diary(p, dry_run=dry_run,
+                                    client=self.hlx if p == "hlx" else self.lj))
+                    for p in targets]
 
-        def done(res):
+        def done(results):
             self._post_busy = False
-            if not res.get("ok"):
-                self.log.emit(f"📔 日记没写成：{res.get('msg')}")
-                return
-            self.log.emit(f"📔 《{res['title']}》→ {res['board']}：{res['msg']}")
-            DBG.log("DIARY", f"完成：《{res['title']}》")
+            for p, res in results or []:
+                name = "葫芦侠" if p == "hlx" else "灵芥"
+                if res.get("ok"):
+                    self.log.emit(f"📔 {name}《{res['title']}》→ {res['board']}："
+                                  f"{res['msg']}")
+                    DBG.log("DIARY", f"{name}完成：《{res['title']}》")
+                else:
+                    self.log.emit(f"📔 {name}日记没写成：{res.get('msg')}")
             if not dry_run:
                 self.state_changed.emit()
 
@@ -879,6 +887,11 @@ class AutoPilot(QObject):
 
         from .ui.common import run_bg
         run_bg(work, done, fail)
+
+    def run_test_diary(self) -> None:
+        """测试日记：两个平台各发一篇（带图），不占每日发帖额度。"""
+        self.log.emit("— 测试日记：两个平台各写一篇 —")
+        self.run_diary()
 
     # ---------- 生活记忆 ----------
     def _life_tick(self) -> None:

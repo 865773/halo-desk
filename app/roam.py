@@ -151,6 +151,7 @@ def _process(client, platform: str, post: dict, board_id: int, board_name: str,
             + (f"（理由：{reason}）" if reason else ""),
             reason, {"post": pid, "action": action, "board": board_name}, log)
     summary["seen"] += 1
+    summary.setdefault("titles", []).append(post.get("title", "") or "")
 
     if dry_run:
         summary["actions"].append({"post": pid, "action": action, "dry": True,
@@ -217,6 +218,14 @@ def roam_session(max_steps: int = 3, dry_run: bool = False, log=print,
             platform = target
             continue
         break
+    # 把今天逛社区的事记进通用记忆（只记概要，不写用户记忆）
+    if total.get("seen"):
+        pname = PLATFORM_NAME.get(total.get("platform") or platform, "社区")
+        titles = [t for t in (s.get("titles") or []) if t][:5]
+        txt = f"在{pname}逛了 {total['seen']} 条帖子，做了 {len(total.get('actions') or [])} 个动作"
+        if titles:
+            txt += "；看了" + "".join(f"《{t}》" for t in titles)
+        memory.remember(txt)
     return total
 
 

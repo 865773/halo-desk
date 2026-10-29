@@ -144,6 +144,9 @@ class AutoPage(Page):
                                      on_click=lambda: self._test_post("hlx")))
         rowt.addWidget(common.button("测试发帖·灵芥", ghost=True,
                                      on_click=lambda: self._test_post("lingjie")))
+        rowt.addSpacing(12)
+        rowt.addWidget(common.button("测试日记", ghost=True,
+                                     on_click=self._test_diary))
         rowt.addStretch(1)
         roam.box.addLayout(rowt)
 
@@ -214,6 +217,9 @@ class AutoPage(Page):
 
     def _test_post(self, platform: str = "hlx") -> None:
         self.app.autopilot.run_test_post(platform)
+
+    def _test_diary(self) -> None:
+        self.app.autopilot.run_test_diary()
 
     def _toggle_roam(self, state) -> None:
         on = bool(state)

@@ -31,6 +31,29 @@ def _pick_board(platform: str) -> tuple[int, str]:
         return (0, "")
 
 
+def make_image_prompt(title: str, content: str, scene: str = "") -> str:
+    """统一配图提示词：形象 + 生活记忆 + 具体场景 + 构图，避免千篇一律。"""
+    appearance = (CFG.get("fish.appearance", "") or "").strip() or (
+        "蓝色长卷发，发尾渐变成浅海蓝色，头顶有一撮翘起来的呆毛；"
+        "一对深蓝色的鲸鱼耳朵，身后拖着一条鲸鱼尾巴；"
+        "蓝白配色的女仆装，白色荷叶边头饰，围裙上绣着一只小鲸鱼；大眼睛，笑起来脸会红红的")
+    life = memory.recent_life(3) or "（今天还没有生活记录）"
+    scene = scene or random.choice([
+        "清晨在窗边伸懒腰", "厨房里刚盛好一碗白米饭", "下雨天在便利店门口躲雨",
+        "傍晚在公园长椅上刷手机", "超市货架前挑零食", "奶茶店里发呆",
+        "深夜窝在沙发上看剧", "河边散步吹风", "书店角落翻书",
+        "夜市里举着烤串", "阳台上晒被子", "公交车上靠窗打瞌睡",
+    ])
+    return (
+        f"角色：{appearance}。\n"
+        f"场景：{scene}，和她的生活记忆一致：{life}\n"
+        f"正在做的事：{title}；{content[:80]}\n"
+        "画面要求：日系插画/动画截图质感，柔和光线，浅景深，有环境细节（家具、食物、"
+        "窗外的雨或光），人物是画面主体但不必正脸；构图自然，可侧身、背影、半身或局部。"
+        "禁止文字、水印、logo、多个人物、变形的手；衣着端庄。"
+    )
+
+
 def make_draft(platform: str, board_name: str, hint: str = "") -> tuple[str, str, str]:
     """返回 (标题, 正文, 配图提示词)。"""
     hint = hint or random.choice(TOPICS)
@@ -38,26 +61,7 @@ def make_draft(platform: str, board_name: str, hint: str = "") -> tuple[str, str
     img_prompt = ""
     from .boards import image_ready
     if image_ready():
-        try:
-            life = memory.recent_life(4) or "（今天还没有生活记录）"
-            scene = random.choice([
-                "早上刚起床在窗边伸懒腰", "在厨房煮白米饭", "下雨天在便利店门口躲雨",
-                "傍晚在公园长椅上刷手机", "逛超市挑零食", "在奶茶店里发呆",
-                "深夜窝在沙发上看剧", "在河边散步吹风", "书店角落翻书",
-                "夜市里举着烤串", "在阳台上晒被子", "坐公交靠窗打瞌睡",
-            ])
-            img_prompt = ai.ask(
-                "你是一个插画师。用 80 字以内写一个具体画面描述，主体是一个蓝白女仆装、"
-                "蓝色长卷发、鲸鱼耳朵和尾巴的可爱女孩，清新治愈、衣着端庄。"
-                "画面必须是**具体的生活场景**：要有地点、时间感、动作、天气或光线，"
-                "并且和她的生活记忆一致；不要总是正脸站立、不要重复同一种构图，"
-                "可以侧身/背影/局部/从窗外看进去。只输出描述本身。",
-                f"她的生活记忆：\n{life}\n\n这次参考场景：{scene}\n\n"
-                f"要配图的帖子标题：{title}\n正文：{content}",
-                CFG.get("ai.model_basic"))
-            img_prompt = " ".join((img_prompt or "").split())[:220]
-        except Exception:
-            img_prompt = ""
+        img_prompt = make_image_prompt(title, content)
     return title, content, img_prompt
 
 
@@ -73,11 +77,13 @@ def auto_post(platform: str, board_id: int = 0, board_name: str = "",
     if not CFG.get("ai.key", ""):
         result["msg"] = "还没配置 DeepSeek Key"
         return result
+    # 发帖板块锁死：只允许泳池（葫芦侠）/ 闲聊（灵芥），忽略传入的 id
+    from .boards import forced_board
+    cli = client or (HlxClient(CFG) if platform == "hlx" else LingjieClient(CFG))
+    board_id, board_name = forced_board(platform, cli)
+    result["board"] = board_name
     if not board_id:
-        board_id, board_name = _pick_board(platform)
-        result["board"] = board_name
-    if not board_id:
-        result["msg"] = "拿不到板块列表"
+        result["msg"] = "只允许发到「泳池 / 闲聊」，但没找到对应板块"
         return result
 
     title, content, img_prompt = make_draft(platform, board_name, hint)
@@ -91,7 +97,7 @@ def auto_post(platform: str, board_id: int = 0, board_name: str = "",
 
     ok, msg = publishing.publish_post(
         platform, board_id, board_name, title, content,
-        bool(img_prompt), img_prompt, client=client)
+        bool(img_prompt), img_prompt, client=cli)
     result["ok"] = ok
     result["msg"] = msg
     result["image"] = bool(img_prompt)

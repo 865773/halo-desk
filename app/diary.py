@@ -10,6 +10,8 @@ from . import ai, imaging, memory, publishing
 from .activity import record
 from .config import CFG
 from .debuglog import DBG
+from .hlx import HlxClient
+from .lingjie import LingjieClient
 
 
 def _today() -> str:
@@ -79,18 +81,23 @@ def diary_due() -> bool:
 
 
 def write_diary(platform: str = "hlx", board_id: int = 0, board_name: str = "",
-                dry_run: bool = False) -> dict:
+                dry_run: bool = False, client=None) -> dict:
     """写今天的日记并发出去；dry_run 只生成不发布。"""
     res = {"ok": False, "msg": "", "title": "", "content": "", "board": board_name,
            "dry": dry_run}
     if not CFG.get("ai.key", ""):
         res["msg"] = "还没配置 DeepSeek Key"
         return res
+    # 日记也只发泳池 / 闲聊，忽略配置里的板块
+    from .boards import forced_board
+    try:
+        cli = client or (HlxClient(CFG) if platform == "hlx" else LingjieClient(CFG))
+    except Exception:
+        cli = client
+    board_id, board_name = forced_board(platform, cli) if cli else (0, "")
+    res["board"] = board_name
     if not board_id:
-        board_id, board_name = _pick_diary_board(platform)
-        res["board"] = board_name
-    if not board_id:
-        res["msg"] = "拿不到板块列表"
+        res["msg"] = "只允许发到「泳池 / 闲聊」，但没找到对应板块"
         return res
 
     life = memory.recent_life(5)
@@ -125,9 +132,10 @@ def write_diary(platform: str = "hlx", board_id: int = 0, board_name: str = "",
     with_image = bool(CFG.get("autopost.with_image", True))
     img_prompt = ""
     if with_image:
-        img_prompt = f"日记配图：{title}，{content[:60]}"
+        from .autopost import make_image_prompt
+        img_prompt = make_image_prompt(title, content, scene="晚上写日记的安静时刻")
     ok, msg = publishing.publish_post(platform, board_id, board_name, title,
-                                      content, with_image, img_prompt)
+                                      content, with_image, img_prompt, client=cli)
     res["ok"] = ok
     res["msg"] = msg
     if ok:

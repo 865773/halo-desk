@@ -257,6 +257,8 @@ def execute(action: str, platform: str, client, target: dict | None,
         if ok:
             REL.add(platform, uid, 3, (target or {}).get("nick", ""))
             record("follow", f"关注了 uid={uid}", platform, uid=uid, reason=reason)
+            memory.remember(f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}"
+                            f"关注了 @{(target or {}).get('nick') or ('uid=' + str(uid))}")
         res.update(ok=ok, done=["关注"] if ok else [], msg=why)
         return res
 
@@ -346,6 +348,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                 record("comment", f"评论《{title}》：{text}"
                                   + ("" if visible else "（审核中）"),
                        platform, pid=pid, uid=tgt.get("author_uid"), reason=reason)
+                memory.remember(
+                    f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}评论了《{title}》：{text}")
                 REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
                 from . import names
                 names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
@@ -355,6 +359,8 @@ def execute(action: str, platform: str, client, target: dict | None,
             done.append("关注")
             record("follow", f"关注了 @{tgt.get('author') or ''}", platform,
                    uid=tgt.get("author_uid"), reason=reason)
+            memory.remember(f"在{'葫芦侠' if platform == 'hlx' else '灵芥'}关注了 "
+                            f"@{tgt.get('author') or 'uid=' + str(tgt.get('author_uid'))}")
             REL.add(platform, tgt.get("author_uid", 0), 3, tgt.get("author", ""))
 
     if spec.get("need_tip"):

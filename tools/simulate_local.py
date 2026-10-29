@@ -356,7 +356,7 @@ def main() -> int:
     brain.choose_switch = lambda board: ("switch_board", "换个板块")
 
     # ---------- 6. 日记草稿 ----------
-    res = diary.write_diary("hlx", 2, "闲聊", dry_run=True)
+    res = diary.write_diary("hlx", 2, "闲聊", dry_run=True, client=FakeHlx())
     check("日记草稿生成", bool(res.get("title")) and bool(res.get("content")), res.get("title"))
     check("日记试运行不发布", res.get("dry") is True, res.get("msg"))
 
@@ -520,6 +520,25 @@ def main() -> int:
     check("灵芥送芥子一次 1 个",
           bool(rt.get("done")) and rewards and rewards[0][1]["amount"] == 1,
           rewards)
+
+    # ---------- 7.12 发帖板块锁死 / 形象配图 ----------
+    class _FB:
+        def boards(self):
+            return [(9, "玩机教程"), (2, "泳池"), (1, "公告")]
+
+        def forums(self):
+            return [(9, "玩机教程"), (2, "闲聊"), (1, "公告")]
+
+    from app.boards import forced_board
+    check("葫芦侠只发泳池", forced_board("hlx", _FB()) == (2, "泳池"),
+          forced_board("hlx", _FB()))
+    check("灵芥只发闲聊", forced_board("lingjie", _FB()) == (2, "闲聊"),
+          forced_board("lingjie", _FB()))
+
+    CFG.set("fish.appearance", "红头发、黑裙子、金色眼睛")
+    from app.autopost import make_image_prompt
+    ip = make_image_prompt("吃饭", "今天吃了白米饭")
+    check("配图带上自定义形象", "红头发" in ip and "日系插画" in ip, ip[:40])
 
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()
