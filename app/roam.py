@@ -1,0 +1,329 @@
+"""逛社区：社区 → 板块 → 看几条 → 每帖做什么 → 换板块/换社区，全部由大肥鱼决策。
+
+每一层决策都写进动态（带理由）；执行统一交给 capabilities。
+"""
+from __future__ import annotations
+
+import json
+import random
+import re
+import time
+from pathlib import Path
+
+from . import brain, memory
+from .activity import record
+from .config import CFG, FILES_DIR
+from .debuglog import DBG
+from .hlx import HlxClient
+from .lingjie import LingjieClient
+from .relations import REL
+
+PLATFORM_NAME = {"hlx": "葫芦侠三楼", "lingjie": "灵芥空间"}
+
+
+def _seen_path(platform: str) -> Path:
+    return FILES_DIR / f"roam_seen_{platform}.json"
+
+
+def _commented_path(platform: str) -> Path:
+    return FILES_DIR / f"roam_commented_{platform}.json"
+
+
+def _load_ids(path: Path) -> list[int]:
+    try:
+        if path.exists():
+            data = json.loads(path.read_text("utf-8"))
+            if isinstance(data, list):
+                return [int(x) for x in data][-800:]
+    except Exception:
+        pass
+    return []
+
+
+def _save_ids(path: Path, ids: list[int]) -> None:
+    try:
+        path.write_text(json.dumps(list(dict.fromkeys(ids))[-800:]), "utf-8")
+    except Exception:
+        pass
+
+
+def _strip(html: str) -> str:
+    return " ".join(re.sub(r"<[^>]+>", " ", html or "").split())
+
+
+def _boards(client, platform: str) -> list[tuple[int, str]]:
+    try:
+        return client.boards() if platform == "hlx" else client.forums()
+    except Exception:
+        return []
+
+
+def _posts(client, platform: str, board_id: int) -> list[dict]:
+    try:
+        return client.posts(board_id, 0, 12) if platform == "hlx" \
+            else client.themes(board_id, 1, 12)
+    except Exception:
+        return []
+
+
+def _posts_of(client, platform: str, uid: int) -> list[dict]:
+    try:
+        return client.user_posts(uid, 10) if platform == "hlx" \
+            else client.user_themes(uid, 10)
+    except Exception:
+        return []
+
+
+def _post_id(post: dict, platform: str) -> int:
+    if platform == "hlx":
+        return int(post.get("postID", 0) or 0)
+    return int(post.get("tid", 0) or post.get("themeId", 0) or 0)
+
+
+def _author(post: dict, platform: str) -> tuple[int, str]:
+    u = post.get("user") or {}
+    uid = int((u or {}).get("userID", 0) or (u or {}).get("uid", 0)
+              or post.get("uid", 0) or 0)
+    nick = ((u or {}).get("nick") or (u or {}).get("nickname")
+            or post.get("nickname") or "这位")
+    return uid, nick
+
+
+def _images(post: dict, platform: str) -> list[str]:
+    out: list[str] = []
+    imgs = post.get("images")
+    if isinstance(imgs, list):
+        for u in imgs:
+            if isinstance(u, str) and u.startswith("http"):
+                out.append(u)
+    detail = post.get("detail") or post.get("content") or ""
+    for m in re.finditer(r"<image>([^<]+)</image>", detail):
+        u = m.group(1)
+        if u.startswith("http") and u not in out:
+            out.append(u)
+    return out[:3]
+
+
+def _post_context(post: dict, platform: str, board: str) -> str:
+    pid = _post_id(post, platform)
+    uid, nick = _author(post, platform)
+    title = post.get("title", "") or ""
+    detail = _strip(post.get("detail") or post.get("content") or "")[:500]
+    return (f"你在「{board}」看到一个帖子：\n【标题】{title}\n【作者】{nick}(uid={uid})\n"
+            f"【正文】{detail or '（只有图片）'}\n"
+            f"【热度】{post.get('hit', 0)} 浏览 / {post.get('commentCount', 0)} 评论\n"
+            f"cat_id={post.get('_cat_id', 0)}，post_id={pid}，作者 user_id={uid}")
+
+
+def _record(summary: dict, platform: str, text: str, reason: str, meta: dict, log) -> None:
+    record("decision", text, platform, reason=reason, **meta)
+    summary["decisions"].append({"text": text, "reason": reason})
+    DBG.log("ROAM", f"[{platform}] {text}")
+    log(text)
+
+
+def _process(client, platform: str, post: dict, board_id: int, board_name: str,
+             summary: dict, seen: list[int], commented: list[int],
+             dry_run: bool, log) -> list[str]:
+    """看一条帖子并执行决策，返回执行了哪些动作。"""
+    pid = _post_id(post, platform)
+    if not pid:
+        return []
+    author_uid, author = _author(post, platform)
+    if author_uid == int(getattr(client, "uid", 0) or 0) or pid in commented:
+        return []
+    post["_cat_id"] = board_id
+    seen.append(pid)
+    _save_ids(_seen_path(platform), seen)
+
+    ctx = _post_context(post, platform, board_name)
+    images = _images(post, platform)
+    decision = brain.decide(platform, ctx, author_uid, author, images)
+    if not decision:
+        summary["errors"].append("模型没有给出决策")
+        return []
+    action = str(decision.get("action") or "nothing").strip()
+    reason = (decision.get("reason") or decision.get("think") or "").strip()
+    content = " ".join((decision.get("content") or "").split())
+    extra = f"，评论：{content}" if ("comment" in action and content) else ""
+    _record(summary, platform,
+            f"看《{post.get('title', '')}》→ 决定 {action}{extra}"
+            + (f"（理由：{reason}）" if reason else ""),
+            reason, {"post": pid, "action": action, "board": board_name}, log)
+    summary["seen"] += 1
+
+    if dry_run:
+        summary["actions"].append({"post": pid, "action": action, "dry": True,
+                                   "reason": reason})
+        return [action]
+
+    from . import capabilities
+    res = capabilities.execute(
+        action, platform, client, decision.get("target") or {"kind": "current"},
+        {"content": content, "reason": reason, "score": decision.get("score", 1)},
+        ctx={"post_id": pid, "author_uid": author_uid,
+             "title": post.get("title", ""), "board": board_name,
+             "board_id": board_id},
+        log=log)
+    done = res.get("done") or []
+    if done:
+        summary["actions"].extend(done)
+        if "评论" in done:
+            commented.append(pid)
+            _save_ids(_commented_path(platform), commented)
+    return done
+
+
+def roam_session(max_steps: int = 3, dry_run: bool = False, log=print,
+                 hlx=None, lj=None) -> dict:
+    """先决定去哪个社区，再看主人主页，最后逛板块；支持中途「换社区」。"""
+    avail = []
+    if CFG.get("hlx.key", ""):
+        avail.append("hlx")
+    if CFG.get("lingjie.token", ""):
+        avail.append("lingjie")
+    if not avail:
+        return {"errors": ["两个平台都没登录"]}
+    platform, why = brain.choose_community(avail)
+    name = PLATFORM_NAME.get(platform, platform)
+    record("decision", f"决定去{name}逛逛" + (f"：{why}" if why else ""),
+           platform, reason=why)
+    log(f"决定去{name}逛逛" + (f"（{why}）" if why else ""))
+
+    total = {"platform": platform, "board": "", "seen": 0, "actions": [],
+             "errors": [], "decisions": [], "segments": []}
+    rounds = 0
+    clients = {"hlx": hlx, "lingjie": lj}
+    while rounds < 2:
+        rounds += 1
+        client = clients.get(platform) or (
+            HlxClient(CFG) if platform == "hlx" else LingjieClient(CFG))
+        s = roam_once(client, max_steps, dry_run, log, platform)
+        for k in ("actions", "decisions", "errors"):
+            total[k].extend(s.get(k) or [])
+        total["seen"] += s.get("seen", 0)
+        total["board"] = s.get("board") or total["board"]
+        total["segments"].append({"platform": platform, "board": s.get("board", "")})
+        nxt = s.get("next_platform")
+        others = [p for p in avail if p != platform]
+        if nxt and others and rounds == 1:
+            target = nxt if nxt in others else others[0]
+            tname = PLATFORM_NAME.get(target, target)
+            why2 = s.get("next_reason", "")
+            record("decision", f"换到{tname}看看" + (f"：{why2}" if why2 else ""),
+                   target, reason=why2)
+            log(f"换到{tname}看看" + (f"（{why2}）" if why2 else ""))
+            total["platform"] = target
+            platform = target
+            continue
+        break
+    return total
+
+
+def roam_once(client, max_steps: int = 3, dry_run: bool = False, log=print,
+              platform: str = "hlx", prefer_board: int = 0) -> dict:
+    summary = {"platform": platform, "board": "", "seen": 0, "actions": [],
+               "errors": [], "decisions": [], "next_platform": None}
+    boards = _boards(client, platform)
+    if not boards:
+        summary["errors"].append("拿不到板块列表")
+        return summary
+
+    seen = _load_ids(_seen_path(platform))
+    commented = _load_ids(_commented_path(platform))
+
+    # 先看主人有没有发新帖（每个平台的主人各自独立）
+    owner = int(CFG.get(f"fish.owner_uid_{platform}", 0) or 0) \
+        or int(CFG.get("fish.owner_uid", 0) or 0)
+    if owner:
+        focus, why_f = brain.choose_focus(platform, owner)
+        if focus == "owner":
+            _record(summary, platform, f"先看看主人有没有发新帖"
+                    + (f"：{why_f}" if why_f else ""), why_f, {"owner": owner}, log)
+            for p in _posts_of(client, platform, owner)[:5]:
+                pid = _post_id(p, platform)
+                if not pid or pid in seen:
+                    continue
+                try:
+                    if pid in commented or client.has_my_comment(pid):
+                        seen.append(pid)
+                        _save_ids(_seen_path(platform), seen)
+                        continue
+                except Exception:
+                    pass
+                _process(client, platform, p, 0, "主人的主页", summary,
+                         seen, commented, dry_run, log)
+                break
+
+    board_id, board_name, why = brain.choose_board(platform, boards)
+    if not board_id:
+        summary["errors"].append("没有可用板块")
+        return summary
+    summary["board"] = board_name
+    _record(summary, platform, f"决定逛「{board_name}」" + (f"：{why}" if why else ""), why,
+            {"board": board_name, "board_id": board_id}, log)
+
+    count, why_n = brain.choose_count()
+    _record(summary, platform, f"打算看 {count} 个帖子" + (f"：{why_n}" if why_n else ""),
+            why_n, {"count": count}, log)
+
+    viewed = 0
+    tries = 0
+    while viewed < count and tries < count * 5:
+        tries += 1
+        posts = _posts(client, platform, board_id)
+        target = None
+        for p in posts:
+            pid = _post_id(p, platform)
+            if not pid or pid in seen:
+                continue
+            # 已经评论过的帖子：不再重复看，也不再重复评论
+            try:
+                if pid in commented or client.has_my_comment(pid):
+                    seen.append(pid)
+                    _save_ids(_seen_path(platform), seen)
+                    continue
+            except Exception:
+                if pid in commented:
+                    continue
+            target = p
+            break
+        if target is None:
+            board_id, board_name, why = brain.choose_board(
+                platform, boards, exclude=[board_id])
+            summary["board"] = board_name
+            _record(summary, platform, f"这板块没新帖了，换到「{board_name}」"
+                    + (f"：{why}" if why else ""), why,
+                    {"board": board_name, "board_id": board_id}, log)
+            continue
+
+        _process(client, platform, target, board_id, board_name, summary,
+                 seen, commented, dry_run, log)
+        viewed += 1
+
+        nxt, why_s = brain.choose_switch(board_name)
+        if nxt == "switch_community":
+            other = "lingjie" if platform == "hlx" else "hlx"
+            logged = CFG.get("lingjie.token", "") if other == "lingjie" else CFG.get("hlx.key", "")
+            if logged:
+                _record(summary, platform,
+                        f"想换到{PLATFORM_NAME[other]}看看" + (f"：{why_s}" if why_s else ""),
+                        why_s, {"switch_to": other}, log)
+                summary["next_platform"] = other
+                summary["next_reason"] = why_s
+                break
+            why_s = (why_s + "；" if why_s else "") + "另一个社区没登录，继续逛这个板块"
+        if nxt == "switch_board":
+            board_id, board_name, why_b = brain.choose_board(
+                platform, boards, exclude=[board_id])
+            if board_id:
+                summary["board"] = board_name
+                _record(summary, platform, f"换到「{board_name}」"
+                        + (f"：{why_b}" if why_b else ""), why_b,
+                        {"board": board_name, "board_id": board_id}, log)
+        else:
+            _record(summary, platform,
+                    f"继续逛「{board_name}」" + (f"：{why_s}" if why_s else ""),
+                    why_s, {"switch": "stay"}, log)
+        time.sleep(random.uniform(1.5, 4.0))
+    return summary

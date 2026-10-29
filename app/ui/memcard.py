@@ -1,0 +1,115 @@
+"""社区页里的「用户记忆」卡片：列表显示名字/uid，点进去看内容。"""
+from __future__ import annotations
+
+import os
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget,
+                               QListWidgetItem, QTextBrowser)
+
+from ..config import FILES_DIR
+from ..debuglog import DBG
+from ..memory import mem_limit
+from ..relations import REL
+from . import common, theme
+
+
+class UserMemoryCard(common.Card):
+    def __init__(self, app, platform: str, title: str):
+        super().__init__(padding=18, spacing=10)
+        self.app = app
+        self.platform = platform
+        self.paths: dict[str, str] = {}
+
+        head = QHBoxLayout()
+        head.addWidget(common.card_title(title))
+        head.addStretch(1)
+        head.addWidget(common.button("刷新", ghost=True, on_click=self.reload))
+        head.addWidget(common.button("打开目录", ghost=True, on_click=self.open_dir))
+        self.box.addLayout(head)
+        self.box.addWidget(common.hint(
+            "大肥鱼对每个人的记忆：点名单看内容；超过 "
+            f"{mem_limit('user')} 字会自动总结压缩。"))
+
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        self.lst = QListWidget()
+        self.lst.setFixedWidth(260)
+        self.lst.setStyleSheet("font-size:12px;")
+        self.lst.currentItemChanged.connect(lambda *_: self._show())
+        row.addWidget(self.lst)
+
+        self.view = QTextBrowser()
+        self.view.setStyleSheet("font-size:12px;")
+        self.view.setPlaceholderText("左边点一个名字")
+        row.addWidget(self.view, 1)
+        self.box.addLayout(row)
+        self.reload()
+
+    # ---------- 数据 ----------
+    def reload(self) -> None:
+        cur = self.lst.currentItem().data(Qt.UserRole) if self.lst.currentItem() else None
+        self.lst.clear()
+        self.paths = {}
+        files = sorted(FILES_DIR.glob(f"mem_{self.platform}_u*.txt"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        for p in files:
+            uid = self._uid_of(p.name)
+            nick = ""
+            try:
+                nick = REL.nick(self.platform, uid)
+            except Exception:
+                nick = ""
+            lines = 0
+            try:
+                lines = sum(1 for ln in p.read_text("utf-8").splitlines() if ln.strip())
+            except Exception:
+                pass
+            label = f"{nick or 'uid=' + str(uid)}  ·  {uid}"
+            item = QListWidgetItem(label)
+            item.setToolTip(f"{lines} 条 · {p.stat().st_size} 字节")
+            item.setData(Qt.UserRole, str(p))
+            item.setData(Qt.UserRole + 1, uid)
+            self.lst.addItem(item)
+            self.paths[str(p)] = label
+            if cur and str(p) == str(cur):
+                self.lst.setCurrentItem(item)
+        if self.lst.count() and not self.lst.currentItem():
+            self.lst.setCurrentRow(0)
+        elif not self.lst.count():
+            self.view.setPlainText("这一边还没有用户记忆。等大肥鱼在这里和人聊过，就会出现。")
+
+    @staticmethod
+    def _uid_of(name: str) -> int:
+        try:
+            tail = name.rsplit("_u", 1)[1]
+            return int(tail.split(".")[0])
+        except Exception:
+            return 0
+
+    def _show(self) -> None:
+        item = self.lst.currentItem()
+        if not item:
+            return
+        path = item.data(Qt.UserRole)
+        uid = item.data(Qt.UserRole + 1) or 0
+        nick = self.paths.get(path, "").split("  ·  ")[0]
+        try:
+            text = open(path, encoding="utf-8").read()
+        except Exception as e:
+            text = f"读取失败：{e}"
+        favor = 0
+        try:
+            favor = REL.get(self.platform, uid)
+        except Exception:
+            pass
+        header = (f"<div style='color:{theme.MUTED};font-size:12px'>"
+                  f"{nick}（uid={uid}） · 好感度 {favor}/100 · "
+                  f"{len(text)}/{mem_limit('user')} 字</div>")
+        self.view.setHtml(header + "<pre style='white-space:pre-wrap'>"
+                          + (text or "（空）").replace("<", "&lt;") + "</pre>")
+
+    def open_dir(self) -> None:
+        from .settings_page import open_local
+        if not open_local(str(FILES_DIR)):
+            common.toast(self.app, f"打不开，路径：{FILES_DIR}", "error")

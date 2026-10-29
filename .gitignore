@@ -1,0 +1,11 @@
+data/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.png
+._MEI*
+.verify*/
+.uitest*/
