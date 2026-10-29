@@ -59,17 +59,22 @@ class PetWindow(QWidget):
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
 
         self._pix = QPixmap(resource("assets/dafeiyu.png"))
-        self._faces = {}
-        for key, name in (("idle", "idle.jpg"), ("happy", "happy.png"),
-                          ("eat", "eat.jpg"), ("angry", "angry.jpg"),
-                          ("sleep", "sleep.jpg"), ("sad", "sad.jpg"),
-                          ("hello", "hello.png")):
-            p = resource(f"assets/pet/{name}")
-            pm = QPixmap(p)
-            if not pm.isNull():
-                self._faces[key] = pm
-        if "idle" in self._faces:
-            self._pix = self._faces["idle"]
+        self._frames = {}
+        for key in ("idle", "happy", "shy", "angry", "drag", "eat"):
+            seq = []
+            for i in range(16):
+                pth = resource(f"assets/pet/shenshen/{key}_{i}.png")
+                pm = QPixmap(pth)
+                if pm.isNull():
+                    break
+                seq.append(pm)
+            if seq:
+                self._frames[key] = seq
+        self._cur = "idle"
+        self._fi = 0
+        self._fcount = 0
+        if self._frames.get("idle"):
+            self._pix = self._frames["idle"][0]
         self._face_timer = QTimer(self)
         self._face_timer.setSingleShot(True)
         self._face_timer.timeout.connect(self._reset_face)
@@ -99,17 +104,23 @@ class PetWindow(QWidget):
         self._apply_size()
 
     def set_face(self, name: str, revert_ms: int = 5000) -> None:
-        pm = self._faces.get(name)
-        if pm is not None:
-            self._pix = pm
+        if name == "hello":
+            name = "happy"
+        seq = self._frames.get(name)
+        if seq:
+            self._cur = name
+            self._fi = 0
+            self._pix = seq[0]
             self.update()
         if revert_ms > 0:
             self._face_timer.start(revert_ms)
 
     def _reset_face(self) -> None:
-        pm = self._faces.get("idle")
-        if pm is not None:
-            self._pix = pm
+        self._cur = "idle"
+        self._fi = 0
+        seq = self._frames.get("idle")
+        if seq:
+            self._pix = seq[0]
             self.update()
 
     def show_near_default(self) -> None:
@@ -135,6 +146,12 @@ class PetWindow(QWidget):
     # ---------- 绘制 ----------
     def _animate(self) -> None:
         self._bob += 0.09
+        seq = self._frames.get(self._cur) or []
+        if seq:
+            self._fcount += 1
+            if self._fcount % 4 == 0:
+                self._fi = (self._fi + 1) % len(seq)
+                self._pix = seq[self._fi]
         self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802

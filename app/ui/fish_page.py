@@ -30,7 +30,6 @@ class FishPage(Page):
                          "人设、记忆、生图、发帖、挂件，都在这一页。")
         self.history: list[tuple[str, str]] = []
         self._boards: list[tuple[int, str]] = []
-        self._build_ai()
         self._build_image()
         self._build_persona()
         self._build_publish()
@@ -90,28 +89,18 @@ class FishPage(Page):
         self.body.addWidget(card)
 
     def save_ai(self) -> None:
-        CFG.set("ai.key", self.api_key.text().strip())
-        CFG.set("ai.base", self.base.text().strip() or "https://api.deepseek.com")
-        CFG.set("ai.model_basic", self.model_basic.currentText().strip())
-        CFG.set("ai.model_smart", self.model_smart.currentText().strip())
+        # AI 配置已移到「设置 → AI 配置」
         CFG.save()
-        self.ai_state.setText("已保存")
-        common.toast(self.app, "AI 配置已保存", "ok")
 
     def test_ai(self) -> None:
-        self.save_ai()
-        self.ai_state.setText("测试中…")
-
         def work(_e):
             from .. import ai
-            return ai.ask("", "只回复两个字：在的", CFG.get("ai.model_basic"))
+            return ai.ask("", "只回复两个字：在的")
 
         def done(text):
-            self.ai_state.setText("连接正常")
             common.toast(self.app, f"模型回复：{text.strip()[:30]}", "ok")
 
         def fail(msg):
-            self.ai_state.setText("连接失败")
             common.toast(self.app, f"连接失败：{msg}", "err")
 
         common.run_bg(work, done, fail)

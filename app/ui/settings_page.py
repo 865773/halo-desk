@@ -6,14 +6,15 @@ import subprocess
 import sys
 
 from PySide6.QtCore import QUrl, Qt
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel,
-                               QLineEdit, QMessageBox, QSpinBox)
+from PySide6.QtGui import QDesktopServices, QPixmap
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                               QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                               QSpinBox, QVBoxLayout)
 
 from .. import memory
 from ..config import CFG, data_dir
 from ..debuglog import DBG
-from . import common
+from . import common, theme
 from .base import Page
 
 
@@ -158,6 +159,55 @@ class SettingsPage(Page):
             "和她说句话、两个平台签到、隐藏挂件。挂件独立于总开关，关掉总开关也会留着。"))
         self.body.addWidget(pet)
 
+        # ---------- AI 配置 ----------
+        ai = common.Card(padding=20, spacing=10)
+        ai.box.addWidget(common.card_title("AI 配置"))
+        ai.box.addWidget(common.hint(
+            "日常文字用 deepseek-chat；有图片时自动换看图模型。"
+            "也可以在下面接任意 OpenAI 兼容接口（中转站/其他厂商）。"))
+        prow2 = QHBoxLayout()
+        prow2.addWidget(QLabel("使用"))
+        self.ai_provider = QComboBox()
+        self.ai_provider.addItems(["DeepSeek 官方", "自定义（OpenAI 兼容）"])
+        self.ai_provider.setCurrentIndex(
+            1 if CFG.get("ai.provider", "deepseek") == "custom" else 0)
+        self.ai_provider.currentIndexChanged.connect(self._save_ai)
+        prow2.addWidget(self.ai_provider)
+        prow2.addStretch(1)
+        ai.box.addLayout(prow2)
+        self.ai_key = QLineEdit(CFG.get("ai.key", ""))
+        self.ai_key.setEchoMode(QLineEdit.Password)
+        self.ai_key.setPlaceholderText("DeepSeek API Key（sk-...）")
+        self.ai_key.editingFinished.connect(self._save_ai)
+        ai.box.addWidget(self.ai_key)
+        crow = QHBoxLayout()
+        self.ai_base = QLineEdit(CFG.get("ai.custom_base", ""))
+        self.ai_base.setPlaceholderText("自定义接口地址，例如 https://api.openai.com/v1")
+        self.ai_base.editingFinished.connect(self._save_ai)
+        crow.addWidget(self.ai_base, 1)
+        ai.box.addLayout(crow)
+        crow2 = QHBoxLayout()
+        self.ai_ckey = QLineEdit(CFG.get("ai.custom_key", ""))
+        self.ai_ckey.setEchoMode(QLineEdit.Password)
+        self.ai_ckey.setPlaceholderText("自定义 API Key")
+        self.ai_ckey.editingFinished.connect(self._save_ai)
+        crow2.addWidget(self.ai_ckey, 1)
+        self.ai_cmodel = QLineEdit(CFG.get("ai.custom_model", ""))
+        self.ai_cmodel.setPlaceholderText("自定义模型名")
+        self.ai_cmodel.editingFinished.connect(self._save_ai)
+        crow2.addWidget(self.ai_cmodel, 1)
+        self.ai_cvision = QLineEdit(CFG.get("ai.custom_vision", ""))
+        self.ai_cvision.setPlaceholderText("看图模型名（可空）")
+        self.ai_cvision.editingFinished.connect(self._save_ai)
+        crow2.addWidget(self.ai_cvision, 1)
+        ai.box.addLayout(crow2)
+        trow = QHBoxLayout()
+        trow.addWidget(common.button("测试 AI", primary=True, on_click=self._test_ai))
+        self.ai_state = common.muted("")
+        trow.addWidget(self.ai_state, 1)
+        ai.box.addLayout(trow)
+        self.body.addWidget(ai)
+
         paths = common.Card(padding=20, spacing=10)
         paths.box.addWidget(common.card_title("目录"))
         paths.box.addWidget(common.line())
@@ -207,18 +257,23 @@ class SettingsPage(Page):
         about.box.addWidget(common.card_title("关于"))
         about.box.addWidget(common.hint(
             "大肥鱼桌面版是把 hlx-halo（葫芦侠三楼）和 lingjie-halo（灵芥空间）"
-            "两个 Android 项目合并移植成的 Windows 桌面程序："
-            "共用一套大肥鱼人设、记忆、心情和 AI 配置，两个平台各用各的账号。"))
+            "两个 Android 项目合并移植成的 Windows 桌面程序。"))
         link = QLabel(
-            '本项目：<a style="color:#38BDF8" href="https://gitee.com/guo-wenlong/halo-desk">'
+            '本项目：<a style="color:{c}" href="https://gitee.com/guo-wenlong/halo-desk">'
             'gitee.com/guo-wenlong/halo-desk</a><br>'
-            '原项目：<a style="color:#38BDF8" href="https://gitee.com/guo-wenlong/hlx-halo">'
-            'hlx-halo</a> · '
-            '<a style="color:#38BDF8" href="https://gitee.com/guo-wenlong/lingjie-halo">'
-            'lingjie-halo</a>')
+            '葫芦侠三楼主页：<a style="color:{c}" href="https://www.huluxia.com">'
+            'www.huluxia.com</a><br>'
+            '灵芥助手主页：<a style="color:{c}" href="https://gitee.com/guo-wenlong/lingjie-halo">'
+            'gitee.com/guo-wenlong/lingjie-halo</a><br>'
+            '作者：<b>dudu</b>'.replace("{c}", theme.ACCENT))
         link.setOpenExternalLinks(True)
         link.setTextInteractionFlags(Qt.TextBrowserInteraction)
         about.box.addWidget(link)
+        arow = QHBoxLayout()
+        arow.addWidget(common.button("赞赏支持", primary=True,
+                                     on_click=self.show_reward))
+        arow.addStretch(1)
+        about.box.addLayout(arow)
         about.box.addWidget(common.hint(
             "自动签到等操作会调用社区官方接口，请保持合理频率，避免账号风控。"))
         self.body.addWidget(about)
@@ -301,6 +356,52 @@ class SettingsPage(Page):
             common.toast(self.app, f"导出失败：{e}", "error")
 
         common.run_bg(work, done, fail)
+
+    def show_reward(self) -> None:
+        import os as _os
+        from ..paths import resource
+        p = resource("assets/reward.png")
+        dlg = QDialog(self)
+        dlg.setWindowTitle("赞赏支持 dudu")
+        lay = QVBoxLayout(dlg)
+        lb = QLabel()
+        pix = QPixmap(p)
+        if not pix.isNull():
+            lb.setPixmap(pix.scaled(320, 420, Qt.KeepAspectRatio,
+                                    Qt.SmoothTransformation))
+        else:
+            lb.setText("没找到赞赏码图片")
+        lb.setAlignment(Qt.AlignCenter)
+        lay.addWidget(lb)
+        lay.addWidget(QLabel("谢谢支持～"))
+        dlg.exec()
+
+    def _save_ai(self, *_a) -> None:
+        CFG.set("ai.provider",
+                "custom" if self.ai_provider.currentIndex() == 1 else "deepseek")
+        CFG.set("ai.key", self.ai_key.text().strip())
+        CFG.set("ai.custom_base", self.ai_base.text().strip())
+        CFG.set("ai.custom_key", self.ai_ckey.text().strip())
+        CFG.set("ai.custom_model", self.ai_cmodel.text().strip())
+        CFG.set("ai.custom_vision", self.ai_cvision.text().strip())
+        CFG.save()
+
+    def _test_ai(self) -> None:
+        self._save_ai()
+        self.ai_state.setText("测试中…")
+        from .common import run_bg
+
+        def work(_e):
+            from .. import ai
+            return ai.ask("只回复两个字：可用", "测试")
+
+        def done(t):
+            self.ai_state.setText(f"可用 ✔（{str(t)[:8]}）")
+
+        def fail(e):
+            self.ai_state.setText(f"不可用：{e}")
+
+        run_bg(work, done, fail)
 
     def clear_dedupe(self) -> None:
         """清掉「已评论/已回复」记录（评论卡在审核时可以用它重试）。"""

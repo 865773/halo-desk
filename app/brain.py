@@ -183,9 +183,7 @@ def decide(platform: str, state: str, uid: int = 0, nick: str = "",
         try:
             if images and _perm("vision", True) and _ < 2:
                 raw = ai.chat_with_images(sys, ask + "\n【配图】已附上帖子图片。",
-                                          images,
-                                          CFG.get("ai.model_vision", "") or
-                                          CFG.get("ai.model_basic"))
+                                          images, ai.model_vision())
             else:
                 raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
         except Exception as e:

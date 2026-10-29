@@ -326,7 +326,8 @@ class AutoPilot(QObject):
             if CFG.get("autopost.enabled", False):
                 started.append(f"自动发帖 {int(CFG.get('autopost.interval_hours', 6) or 6)}h")
             if CFG.get("autopost.diary_enabled", False):
-                started.append(f"日记检查（{CFG.get('autopost.diary_time', '23:00')} 发送）")
+                started.append(f"日记定时 {CFG.get('autopost.diary_time', '23:00')}"
+                               f"（到点才生成）")
         else:
             self.post_timer.stop()
         if CFG.get("auto.enabled", False) and CFG.get("ai.key", ""):

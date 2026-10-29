@@ -14,15 +14,43 @@ class AIError(Exception):
     pass
 
 
+def is_custom() -> bool:
+    return (CFG.get("ai.provider", "deepseek") or "deepseek") == "custom"
+
+
+def api_key() -> str:
+    return (CFG.get("ai.custom_key", "") if is_custom()
+            else CFG.get("ai.key", "")) or ""
+
+
+def model_basic() -> str:
+    if is_custom():
+        return CFG.get("ai.custom_model", "") or "gpt-4o-mini"
+    return CFG.get("ai.model_basic", "deepseek-chat") or "deepseek-chat"
+
+
+def model_vision() -> str:
+    if is_custom():
+        return CFG.get("ai.custom_vision", "") or model_basic()
+    return CFG.get("ai.model_vision", "") or model_basic()
+
+
 def _headers() -> dict:
-    key = CFG.get("ai.key", "")
+    key = api_key()
     if not key:
-        raise AIError("还没有填写 DeepSeek API Key")
+        raise AIError("还没有填写 API Key")
     return {"Authorization": f"Bearer {key}",
             "Content-Type": "application/json"}
 
 
 def _url(path: str) -> str:
+    if is_custom():
+        base = (CFG.get("ai.custom_base", "") or "").rstrip("/")
+        if not base:
+            raise AIError("还没有填写自定义接口地址")
+        if base.endswith("/chat/completions"):
+            return base
+        return base + "/chat/completions"
     base = (CFG.get("ai.base", "https://api.deepseek.com") or "").rstrip("/")
     return base + path
 
@@ -32,7 +60,14 @@ def chat(messages: list[dict], model: Optional[str] = None,
          on_delta: Optional[Callable[[str], None]] = None,
          timeout: float = 90) -> str:
     """普通或流式对话，返回完整文本。"""
-    model = model or CFG.get("ai.model_basic", "deepseek-flash")
+    model = model or model_basic()
+    if is_custom():
+        base_models = {
+            CFG.get("ai.model_basic", ""), CFG.get("ai.model_vision", ""),
+            "deepseek-chat", "deepseek-flash", "deepseek-reasoner",
+        }
+        if not model or model in base_models:
+            model = model_basic()
     body = {"model": model, "messages": messages,
             "temperature": temperature, "stream": bool(stream)}
     url = _url("/chat/completions")

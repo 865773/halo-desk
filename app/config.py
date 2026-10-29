@@ -101,6 +101,11 @@ DEFAULTS: dict = {
     "ai": {
         "key": "",
         "base": "https://api.deepseek.com",
+        "provider": "deepseek",
+        "custom_base": "https://api.openai.com/v1",
+        "custom_key": "",
+        "custom_model": "gpt-4o-mini",
+        "custom_vision": "",
         "model_basic": "deepseek-chat",
         "model_smart": "deepseek-reasoner",
         "model_vision": "deepseek-chat",
