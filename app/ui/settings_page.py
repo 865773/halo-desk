@@ -219,6 +219,14 @@ class SettingsPage(Page):
         self.ai_state = common.muted("")
         trow.addWidget(self.ai_state, 1)
         ai.box.addLayout(trow)
+        self.mem_gate = QCheckBox("让大肥鱼自己判断哪些内容值得记住")
+        self.mem_gate.setChecked(bool(CFG.get("fish.mem_gate", True)))
+        self.mem_gate.stateChanged.connect(
+            lambda s: (CFG.set("fish.mem_gate", bool(s)), CFG.save()))
+        ai.box.addWidget(self.mem_gate)
+        ai.box.addWidget(common.hint(
+            "开启后：长期稳定、纠正反馈、明确约定才存入；一次性任务、临时状态不存，"
+            "拿不准优先不存。关闭则恢复全部保存。"))
         self.body.addWidget(ai)
 
         # ---------- 文生图 ----------

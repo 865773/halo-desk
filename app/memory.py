@@ -148,10 +148,21 @@ def read_lines(path, n: int = 10) -> list[str]:
     return lines[-n:]
 
 
-def remember(text: str, uid: int = 0, platform: str = "") -> None:
-    """记一条通用记忆；给了 uid 就同时记到该平台的用户记忆里。"""
+def remember(text: str, uid: int = 0, platform: str = "",
+             force: bool = False, kind: str = "general") -> None:
+    """记一条通用记忆；先让大肥鱼判断值不值得存，再决定写不写。"""
     if not text.strip():
         return
+    if not force:
+        try:
+            from .memgate import should_store
+            ok, why = should_store(text, platform, uid, kind)
+            if not ok:
+                log(f"[记忆跳过] {why}｜{text[:60]}")
+                return
+            log(f"[记忆理由] {why}｜{text[:60]}")
+        except Exception:
+            pass
     target = general_file(platform)
     append_line(target, text)
     if uid:

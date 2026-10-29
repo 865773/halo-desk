@@ -49,6 +49,8 @@ from app.config import CFG  # noqa: E402
 from app.debuglog import DBG  # noqa: E402
 from app.relations import REL  # noqa: E402
 
+CFG.set("fish.mem_gate", False)   # 仿真没有模型，关闭记忆判断
+
 
 class FakeHlx:
     def __init__(self):
