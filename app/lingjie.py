@@ -280,6 +280,26 @@ class LingjieClient:
         ok = self._ok(obj)
         return ok, obj.get("msg") or obj.get("message") or ("" if ok else "取关失败")
 
+    def is_following(self, uid: int) -> bool:
+        try:
+            return any(int(r.get("uid", 0) or 0) == int(uid) for r in self.following_list())
+        except Exception:
+            return False
+
+    def follow_once(self, uid: int) -> tuple[bool, str]:
+        """已经关注过就不重复调用（接口是切换式的，重复调用会取消关注）。"""
+        if self.is_following(uid):
+            return False, "已经关注过了"
+        ok, msg = self.follow(uid)
+        return ok, msg
+
+    def unfollow_once(self, uid: int) -> tuple[bool, str]:
+        """本来没关注就不要调用，否则会变成关注。"""
+        if not self.is_following(uid):
+            return False, "本来就没关注"
+        ok, msg = self.unfollow(uid)
+        return ok, msg
+
     def like(self, tid: int, cancel: bool = False) -> bool:
         obj = self._post("/theme/like/cancel" if cancel else "/theme/like", {"tid": tid})
         return self._ok(obj)

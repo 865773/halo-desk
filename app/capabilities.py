@@ -37,8 +37,8 @@ _add("follow_user", "只关注目标用户，不动帖子", ["follow"], need_pos
 _add("unfollow_user", "取消关注目标用户（需要 target.uid）", [], need_post=False)
 _add("unlike_post", "取消点赞目标帖子", [], need_post=True)
 _add("unfavorite_post", "取消收藏目标帖子", [], need_post=True)
-_add("tip_post", "给目标帖子送葫芦（score 1~5，content 至少 5 字）",
-     [], need_post=True, need_tip=True)
+_add("tip_post", "给目标帖子送平台货币（葫芦侠=葫芦，最多 5 个；灵芥=芥子，每次 1 个）；"
+                 "都很珍贵，只有主人或好感很高才给", [], need_post=True, need_tip=True)
 _add("publish_post", "发一条新帖子（title/content，可选 genimg 配图描述）",
      [], need_post=False, need_publish=True)
 _add("sign_in", "签到（两个平台都签）", [], need_post=False)
@@ -176,10 +176,18 @@ def _do_comment(platform, client, pid, text) -> tuple[bool, str]:
     return client.publish_comment(pid, text)
 
 
-def _do_follow(platform, client, uid) -> bool:
+def _do_follow(platform, client, uid) -> tuple[bool, str]:
+    """关注前先查关注列表：已关注就跳过（避免接口把关注切成取关）。"""
     if platform == "hlx":
-        return client.follow_safe(uid)
-    return client.follow(uid)[0]
+        return client.follow_once(uid)
+    return client.follow_once(uid)
+
+
+def _do_unfollow(platform, client, uid) -> tuple[bool, str]:
+    """取关前先查关注列表：本来没关注就跳过（否则会变成关注）。"""
+    if platform == "hlx":
+        return client.unfollow_once(uid)
+    return client.unfollow_once(uid)
 
 
 def _perm(name: str, default: bool = True) -> bool:
@@ -206,7 +214,7 @@ def execute(action: str, platform: str, client, target: dict | None,
         res["msg"] = "相关权限都关着"
         return res
     if spec.get("need_tip") and not _perm("tip", False):
-        res["msg"] = "送葫芦权限关着"
+        res["msg"] = "送葫芦/芥子的权限关着"
         return res
     if action == "publish_post" and not _perm("post", True):
         res["msg"] = "发帖权限关着"
@@ -245,11 +253,11 @@ def execute(action: str, platform: str, client, target: dict | None,
         if not uid:
             res["msg"] = "缺少 uid"
             return res
-        ok = _do_follow(platform, client, uid)
+        ok, why = _do_follow(platform, client, uid)
         if ok:
             REL.add(platform, uid, 3, (target or {}).get("nick", ""))
             record("follow", f"关注了 uid={uid}", platform, uid=uid, reason=reason)
-        res.update(ok=ok, done=["关注"] if ok else [])
+        res.update(ok=ok, done=["关注"] if ok else [], msg=why)
         return res
 
     if action == "unfollow_user":
@@ -257,14 +265,11 @@ def execute(action: str, platform: str, client, target: dict | None,
         if not uid:
             res["msg"] = "缺少 uid"
             return res
-        if platform == "hlx":
-            ok = client.unfollow(uid)
-        else:
-            ok, _m = client.unfollow(uid)
+        ok, why = _do_unfollow(platform, client, uid)
         if ok:
             REL.add(platform, uid, -3, "")
             record("system", f"取关了 uid={uid}", platform, uid=uid, reason=reason)
-        res.update(ok=ok, done=["取关"] if ok else [], msg="" if ok else "取关失败")
+        res.update(ok=ok, done=["取关"] if ok else [], msg=why)
         return res
 
     if action in ("unlike_post", "unfavorite_post"):
@@ -345,7 +350,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                 from . import names
                 names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
     if "follow" in bits and tgt.get("author_uid"):
-        if _do_follow(platform, client, tgt["author_uid"]):
+        ok_f, _why_f = _do_follow(platform, client, tgt["author_uid"])
+        if ok_f:
             done.append("关注")
             record("follow", f"关注了 @{tgt.get('author') or ''}", platform,
                    uid=tgt.get("author_uid"), reason=reason)
@@ -355,22 +361,30 @@ def execute(action: str, platform: str, client, target: dict | None,
         owner_uid = int(CFG.get(f"fish.owner_uid_{platform}", 0)
                         or CFG.get("fish.owner_uid", 0) or 0)
         favor = REL.get(platform, tgt.get("author_uid", 0)) if tgt.get("author_uid") else 50
-        tip_min = int(CFG.get("roam.tip_favor_min", 90) or 90)
+        _v = CFG.get("roam.tip_favor_min", 90)
+        tip_min = 90 if _v is None else int(_v)
+        coin = "葫芦" if platform == "hlx" else "芥子"
         if tgt.get("author_uid") and tgt["author_uid"] != owner_uid and favor < tip_min:
-            res.update(done=done, ok=bool(done), msg=f"好感只有 {favor}，不送葫芦")
+            res.update(done=done, ok=bool(done),
+                       msg=f"好感只有 {favor}，不送{coin}")
             return res
-        score = max(1, min(5, int(payload.get("score", 1) or 1)))
-        why = (payload.get("content") or "").strip()
-        if len(why) < 5:
-            why = "谢谢你一直陪我说话"
         if platform == "hlx":
+            score = max(1, min(5, int(payload.get("score", 1) or 1)))
+            why = (payload.get("content") or "").strip()
+            if len(why) < 5:
+                why = "谢谢你一直陪我说话"
             ok, _m = client.tip(pid, score, why)
         else:
-            ok, _m = client.reward_publish("theme", pid, score, why)
+            # 灵芥的芥子一次只能 1 个，理由 10 字以内
+            score = 1
+            why = (payload.get("content") or "").strip()[:10] or "喜欢"
+            ok, _m = client.reward_publish("theme", pid, 1, why)
         if ok:
-            done.append(f"送葫芦×{score}")
-            record("tip", f"给《{title}》送了 {score} 个葫芦", platform, pid=pid,
+            done.append(f"送{coin}×{score}")
+            record("tip", f"给《{title}》送了 {score} 个{coin}", platform, pid=pid,
                    uid=tgt.get("author_uid"), reason=reason)
+        else:
+            res["msg"] = f"送{coin}失败"
 
     if done:
         memory.nudge_mood(1)

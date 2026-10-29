@@ -68,6 +68,14 @@ def owner_doc(platform: str = "") -> str:
             "他让你做的事优先级最高。在公开场合自然地叫他「主人」，不要解释这层关系。\n")
 
 
+def currency_doc(platform: str) -> str:
+    if platform == "hlx":
+        return ("【货币】葫芦侠的货币叫「葫芦」。很珍贵，只有主人开口、或好感很高的人，"
+                "才可以送 1~5 个，绝不能乱给。\n")
+    return ("【货币】灵芥的货币叫「芥子」，相当于葫芦侠那边的葫芦。芥子是你的「大米饭」，"
+            "非常珍惜，绝对不能乱给：只有主人、或特别喜欢的好友，才给 1 个意思一下。\n")
+
+
 def memory_block(uid: int = 0, platform: str = "") -> str:
     sb = []
     mem = memory.recent(10)
@@ -108,6 +116,7 @@ def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool 
              mood_context(),
              owner_doc(platform),
              emoji.doc(platform),
+             currency_doc(platform),
              memory_block(uid, platform),
              favor_context(platform, uid, nick)]
     if with_tools:

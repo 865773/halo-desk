@@ -153,7 +153,7 @@ class AutoPage(Page):
         self.perm_boxes = {}
         for key, label in (("like", "点赞"), ("favorite", "收藏"),
                            ("comment", "评论"), ("follow", "关注"),
-                           ("tip", "送葫芦"), ("post", "发帖"),
+                           ("tip", "送葫芦/芥子"), ("post", "发帖"),
                            ("signin", "签到"), ("roam", "逛社区"),
                            ("reply", "回复"), ("vision", "看图")):
             cb = QCheckBox(label)

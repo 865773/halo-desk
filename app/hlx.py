@@ -285,6 +285,23 @@ class HlxClient:
             return True
         return self.follow(user_id)
 
+    def follow_once(self, user_id: int) -> tuple[bool, str]:
+        """已经关注过就不重复关注（避免接口把关注变成取消）。"""
+        if not user_id:
+            return False, "缺少 uid"
+        if self.is_following(user_id):
+            return False, "已经关注过了"
+        return self.follow(user_id), ""
+
+    def unfollow_once(self, user_id: int) -> tuple[bool, str]:
+        """本来没关注就不要调用取消。"""
+        if not user_id:
+            return False, "缺少 uid"
+        if not self.is_following(user_id):
+            return False, "本来就没关注"
+        ok = self.unfollow(user_id)
+        return ok, "" if ok else "取关失败"
+
     def unfollow(self, user_id: int) -> bool:
         obj = self._json(self._get(
             f"{BASE}/friendship/unfollow/ANDROID/2.0?{self.auth()}&user_id={user_id}"))

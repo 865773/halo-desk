@@ -100,9 +100,25 @@ class FakeHlx:
         return True
 
     def follow_safe(self, uid):
+        if uid in self.followed:
+            return True
         self.followed.add(uid)
         self.writes.append(("follow", {"uid": uid}))
         return True
+
+    def follow_once(self, uid):
+        if uid in self.followed:
+            return False, "已经关注过了"
+        self.followed.add(uid)
+        self.writes.append(("follow", {"uid": uid}))
+        return True, ""
+
+    def unfollow_once(self, uid):
+        if uid not in self.followed:
+            return False, "本来就没关注"
+        self.followed.discard(uid)
+        self.writes.append(("unfollow", {"uid": uid}))
+        return True, ""
 
     def comment(self, pid, text, cid=0):
         self.writes.append(("comment", {"pid": pid, "text": text, "cid": cid}))
@@ -197,6 +213,28 @@ class FakeLj:
 
     def follow(self, uid):
         self.writes.append(("lj_follow", {"uid": uid}))
+        return True, ""
+
+    def is_following(self, uid):
+        return int(uid) in getattr(self, "followed", set())
+
+    def follow_once(self, uid):
+        if int(uid) in getattr(self, "followed", set()):
+            return False, "已经关注过了"
+        self.followed = getattr(self, "followed", set()) | {int(uid)}
+        self.writes.append(("lj_follow", {"uid": uid}))
+        return True, ""
+
+    def unfollow_once(self, uid):
+        if int(uid) not in getattr(self, "followed", set()):
+            return False, "本来就没关注"
+        self.followed = getattr(self, "followed", set()) - {int(uid)}
+        self.writes.append(("lj_unfollow", {"uid": uid}))
+        return True, ""
+
+    def reward_publish(self, target_type, target_id, amount, reason="谢谢"):
+        self.writes.append(("lj_reward", {"tid": target_id, "amount": amount,
+                                          "reason": reason}))
         return True, ""
 
     def signin_all(self, on_progress=None):
@@ -452,6 +490,36 @@ def main() -> int:
     cands = _img._model_cands("wan2.6-t2i", "wan2.5-t2i-preview,wanx2.1-t2i-turbo")
     check("生图模型按顺序轮换",
           cands == ["wan2.6-t2i", "wan2.5-t2i-preview", "wanx2.1-t2i-turbo"], cands)
+
+    # ---------- 7.11 关注幂等 / 送芥子 ----------
+    hf = FakeHlx()
+    hf.followed = {88}
+    rf = execute("follow_user", "hlx", hf, {"kind": "user", "uid": 88},
+                 {"reason": "测试"})
+    check("已关注的人不再重复关注", not rf["ok"] and "已经关注" in rf.get("msg", ""),
+          rf.get("msg"))
+
+    hu = FakeHlx()
+    ru = execute("unfollow_user", "hlx", hu, {"kind": "user", "uid": 88},
+                 {"reason": "测试"})
+    check("没关注的人不会误触发关注", not ru["ok"] and "没关注" in ru.get("msg", ""),
+          ru.get("msg"))
+
+    lf = FakeLj()
+    lf.followed = {60}
+    rlf = execute("follow_user", "lingjie", lf, {"kind": "user", "uid": 60},
+                  {"reason": "测试"})
+    check("灵芥已关注不重复关注", not rlf["ok"], rlf.get("msg"))
+
+    CFG.set("roam.tip_favor_min", 0)
+    CFG.set("perm.tip", True)
+    lt = FakeLj()
+    rt = execute("tip_post", "lingjie", lt, {"kind": "user_first", "uid": 60},
+                 {"content": "谢谢你的帖子", "reason": "感谢", "score": 5}, ctx={})
+    rewards = [w for w in lt.writes if w[0] == "lj_reward"]
+    check("灵芥送芥子一次 1 个",
+          bool(rt.get("done")) and rewards and rewards[0][1]["amount"] == 1,
+          rewards)
 
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()
