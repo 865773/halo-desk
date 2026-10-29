@@ -12,6 +12,18 @@ _CACHE: dict[str, dict[str, str]] = {}
 
 
 def _path(platform: str):
+    try:
+        from .memory import account_dir, _self_uid
+        if _self_uid(platform) > 0:
+            d = account_dir(platform)
+            d.mkdir(parents=True, exist_ok=True)
+            flat = FILES_DIR / f"names_{platform}.json"
+            target = d / "names.json"
+            if flat.exists() and not target.exists():
+                flat.rename(target)
+            return target
+    except Exception:
+        pass
     return FILES_DIR / f"names_{platform}.json"
 
 

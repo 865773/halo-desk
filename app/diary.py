@@ -24,7 +24,7 @@ def gen_life(force: bool = False) -> str:
     """每 6 小时把最近发生的事写成生活记录（含当前时段与上一时段在做什么）。"""
     if not CFG.get("ai.key", ""):
         return ""
-    interval = max(60, int(CFG.get("fish.life_refresh_min", 360) or 360)) * 60
+    interval = max(60, int(CFG.get("fish.life_refresh_min", 60) or 60)) * 60
     last = float(CFG.get("fish.life_at", 0) or 0)
     if not force and time.time() - last < interval:
         return ""

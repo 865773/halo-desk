@@ -439,7 +439,7 @@ def main() -> int:
     legacy.write_text("旧记忆", "utf-8")
     mem_mod._migrate_legacy()
     migrated = list(FILES_DIR.glob("mem_lingjie_u9999.txt")) + \
-        list((FILES_DIR / "accounts").glob("*/mem_lingjie_u9999.txt"))
+        list((FILES_DIR.parent / "账号").glob("*/**/mem_lingjie_u9999.txt"))
     check("旧灵芥记忆迁到新命名", bool(migrated) and not legacy.exists(),
           [str(p) for p in migrated])
     for p in migrated:

@@ -28,7 +28,8 @@ def _now() -> str:
     return datetime.now().strftime("%m-%d %H:%M")
 
 
-ACCOUNTS_DIR = FILES_DIR / "accounts"
+ACCOUNTS_DIR = FILES_DIR.parent / "账号"
+ACCOUNT_NAME = {"hlx": "葫芦侠", "lingjie": "灵芥"}
 
 
 def _self_uid(platform: str) -> int:
@@ -45,7 +46,7 @@ def account_dir(platform: str):
     uid = _self_uid(platform)
     if not platform or uid <= 0:
         return FILES_DIR
-    return ACCOUNTS_DIR / f"{platform}_{uid}"
+    return ACCOUNTS_DIR / ACCOUNT_NAME.get(platform, platform) / str(uid)
 
 
 def _user_file(uid: int, platform: str = ""):
@@ -64,6 +65,11 @@ def list_user_files(platform: str = "") -> list:
         return []
 
 
+def ensure_account(platform: str) -> None:
+    """登录后调用：把旧数据迁进该账号目录。"""
+    _migrate_legacy()
+
+
 def _migrate_legacy() -> None:
     """旧命名 mem_lj_u* → mem_lingjie_u*；旧平铺文件 → 当前账号目录。"""
     try:
@@ -78,11 +84,23 @@ def _migrate_legacy() -> None:
             d = account_dir(platform)
             if d == FILES_DIR:
                 continue
+            d.mkdir(parents=True, exist_ok=True)
+            # 旧平铺文件
             for p in FILES_DIR.glob(f"mem_{platform}_u*.txt"):
                 target = d / p.name
                 if not target.exists():
-                    d.mkdir(parents=True, exist_ok=True)
                     p.rename(target)
+            # 旧 accounts/<platform>_<uid> 目录
+            old = FILES_DIR / "accounts" / f"{platform}_{_self_uid(platform)}"
+            if old.exists() and old != d:
+                for p in old.glob("mem_*.txt"):
+                    target = d / p.name
+                    if not target.exists():
+                        p.rename(target)
+                for p in old.glob("names.json"):
+                    target = d / "names.json"
+                    if not target.exists():
+                        p.rename(target)
         except Exception:
             pass
 

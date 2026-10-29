@@ -49,6 +49,27 @@ class Relations:
             for k, v in legacy.items():
                 cur.setdefault(k, v)
             self.data["lingjie"] = cur
+        # 好感按「平台+当前账号」分开：把裸平台键迁到 平台@uid
+        moved = False
+        for platform in ("hlx", "lingjie"):
+            try:
+                uid = int(__import__("app.config", fromlist=["CFG"]).CFG.get(
+                    f"{platform}.uid", 0) or 0)
+            except Exception:
+                uid = 0
+            if uid <= 0:
+                continue
+            key = f"{platform}@{uid}"
+            bare = self.data.pop(platform, None)
+            if isinstance(bare, dict) and bare:
+                cur = self.data.get(key)
+                if not isinstance(cur, dict):
+                    cur = {}
+                for k, v in bare.items():
+                    cur.setdefault(k, v)
+                self.data[key] = cur
+                moved = True
+        if moved or legacy:
             self._save()
 
     def _save(self) -> None:
@@ -58,11 +79,20 @@ class Relations:
         except Exception:
             pass
 
+    def _key(self, platform: str) -> str:
+        try:
+            from .config import CFG
+            uid = int(CFG.get(f"{platform}.uid", 0) or 0)
+        except Exception:
+            uid = 0
+        return f"{platform}@{uid}" if uid else platform
+
     def _bucket(self, platform: str) -> dict:
-        b = self.data.get(platform)
+        key = self._key(platform)
+        b = self.data.get(key)
         if not isinstance(b, dict):
             b = {}
-            self.data[platform] = b
+            self.data[key] = b
         return b
 
     def get(self, platform: str, uid: int, nick: str = "") -> int:

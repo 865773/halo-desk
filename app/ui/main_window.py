@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self.show_page(CFG.get("general.page", "home") or "home")
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
+        QTimer.singleShot(2600, self._validate_logins)
 
     def _on_pet_reply(self, platform: str, nick: str, text: str) -> None:
         if self.pet is None or not self.pet.isVisible():
@@ -184,7 +185,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v5.1 · 桌面合并版")
+        ver = QLabel("v5.2 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -233,6 +234,12 @@ class MainWindow(QMainWindow):
 
     def notify_accounts(self) -> None:
         self.accounts_changed.emit()
+        try:
+            from .. import memory
+            memory.ensure_account("hlx")
+            memory.ensure_account("lingjie")
+        except Exception:
+            pass
         self._refresh_sidebar_status()
         self.pages["home"].refresh()
 
@@ -365,6 +372,48 @@ class MainWindow(QMainWindow):
                         pass
             CFG.save()
             self.pages["home"].refresh()
+
+        from .common import run_bg
+        run_bg(work, done, lambda _e: None)
+
+    def _validate_logins(self) -> None:
+        """启动时检测登录态：失效就清掉该平台登录并提示重新登录。"""
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            return
+
+        def work(_e):
+            out = {}
+            try:
+                if CFG.get("hlx.key", ""):
+                    out["hlx"] = bool(self.hlx.check_login())
+            except Exception:
+                out["hlx"] = True
+            try:
+                if CFG.get("lingjie.token", ""):
+                    out["lj"] = bool(self.lj.check_login())
+            except Exception:
+                out["lj"] = True
+            return out
+
+        def done(res):
+            bad = []
+            if res.get("hlx") is False:
+                for k in ("hlx.key", "hlx.uid", "hlx.nick", "hlx.level"):
+                    CFG.set(k, "" if k.endswith("key") or k.endswith("nick") else 0)
+                bad.append("葫芦侠")
+            if res.get("lj") is False:
+                for k in ("lingjie.token", "lingjie.uid", "lingjie.nickname",
+                          "lingjie.level", "lingjie.exp", "lingjie.next_exp"):
+                    CFG.set(k, "" if k in ("lingjie.token", "lingjie.nickname") else 0)
+                bad.append("灵芥")
+            if bad:
+                CFG.save()
+                self.notify_accounts()
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self, "登录已失效",
+                    "、".join(bad) + " 的登录态已失效，请重新登录。\n"
+                    "该账号的记忆仍然保留，登录后会恢复。")
 
         from .common import run_bg
         run_bg(work, done, lambda _e: None)

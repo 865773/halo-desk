@@ -58,6 +58,12 @@ class UserMemoryCard(common.Card):
         cur = self.lst.currentItem().data(Qt.UserRole) if self.lst.currentItem() else None
         self.lst.clear()
         self.paths = {}
+        logged = bool(self.app.cfg.get("hlx.key", "")) if self.platform == "hlx" \
+            else bool(self.app.cfg.get("lingjie.token", ""))
+        if not logged:
+            self.view.setPlainText(
+                "还没登录这个平台。\n登录对应账号后，会显示该账号自己的用户记忆。")
+            return
         from ..memory import list_user_files
         files = sorted(list_user_files(self.platform),
                        key=lambda p: p.stat().st_mtime, reverse=True)

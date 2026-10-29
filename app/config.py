@@ -126,7 +126,7 @@ DEFAULTS: dict = {
             "身后从裙摆伸出一条蓝白渐变的鲸鱼尾巴，尾鳍宽大，微微上翘，正在开心地轻甩。"),
         "tags": "仿真,真人感,甜美,粘人",
         "interval_min": 20,
-        "life_refresh_min": 360,
+        "life_refresh_min": 60,
         "life_at": 0,
         "owner_uid": 0,
         "owner_uid_hlx": 0,
@@ -144,6 +144,7 @@ DEFAULTS: dict = {
     "general": {
         "autostart": False,
         "first_run": True,
+        "dark_mode": False,
         "page": "home",
     },
     "auto": {

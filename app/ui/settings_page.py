@@ -123,6 +123,12 @@ class SettingsPage(Page):
         self.autostart.setChecked(autostart_enabled())
         self.autostart.stateChanged.connect(self._toggle_autostart)
         general.box.addWidget(self.autostart)
+        self.dark = QCheckBox("黑夜模式")
+        self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
+        self.dark.stateChanged.connect(self._toggle_dark)
+        general.box.addWidget(self.dark)
+        general.box.addWidget(common.hint(
+            "默认浅色；打开黑夜模式后重启程序完全生效。"))
         general.box.addWidget(common.hint(
             "写入当前用户的注册表启动项（HKCU\\...\\Run），不需要管理员权限。"))
         self.body.addWidget(general)
@@ -158,12 +164,15 @@ class SettingsPage(Page):
         b5.clicked.connect(self.export_backup)
         b6 = common.button("退出全部账号", ghost=True)
         b6.clicked.connect(self.logout_all)
+        b7 = common.button("清空所有数据", ghost=True)
+        b7.clicked.connect(self.clear_all_data)
         row.addWidget(b1)
         row.addWidget(b2)
         row.addWidget(b3)
         row.addWidget(b4)
         row.addWidget(b5)
         row.addWidget(b6)
+        row.addWidget(b7)
         row.addStretch(1)
         data.box.addLayout(row)
         self.body.addWidget(data)
@@ -196,6 +205,34 @@ class SettingsPage(Page):
             common.toast(self.app, "已更新开机启动设置", "ok")
         else:
             common.toast(self.app, "设置失败（可能被安全软件拦截）", "err")
+
+    def _toggle_dark(self, state) -> None:
+        CFG.set("general.dark_mode", bool(state))
+        CFG.save()
+        from . import theme
+        theme.apply(self.app.window(), bool(state))
+        common.toast(self.app, "已切换，部分界面重启后完全生效", "ok")
+
+    def clear_all_data(self) -> None:
+        """重置配置（账号/Key/开关），但保留 data/账号/<平台>/<uid> 下的记忆。"""
+        import copy
+        from PySide6.QtWidgets import QMessageBox
+        from ..config import DEFAULTS
+        if QMessageBox.question(
+                self, "清空所有数据",
+                "会重置所有配置和登录态（记忆按账号保留在 data/账号/ 里，"
+                "登录后恢复）。确定重新开始？") != QMessageBox.Yes:
+            return
+        CFG.data = copy.deepcopy(DEFAULTS)
+        CFG.data.setdefault("general", {})["first_run"] = True
+        CFG.save()
+        try:
+            self.app.autopilot.stop()
+            self.app.close_pet()
+        except Exception:
+            pass
+        self.app.notify_accounts()
+        common.toast(self.app, "已重置，重启后从向导开始", "ok")
 
     def logout_all(self) -> None:
         from PySide6.QtWidgets import QMessageBox

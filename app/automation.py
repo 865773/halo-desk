@@ -445,6 +445,10 @@ class AutoPilot(QObject):
         if time.time() - self.last_signin_check < 300:
             return
         self.last_signin_check = time.time()
+        try:
+            self._life_tick()   # 生活记忆：每小时一次，由 gen_life 自己判断间隔
+        except Exception:
+            pass
         if CFG.get("auto.enabled", False):
             self._maybe_daily_signin()
 

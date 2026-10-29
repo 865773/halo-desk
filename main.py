@@ -54,7 +54,7 @@ def main() -> int:
     app.setOrganizationName("Dudu")
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
-    app.setStyleSheet(theme.QSS)
+    theme.apply(app)
     app.setFont(QFont("Microsoft YaHei UI", 9))
 
     ic = icon_path()
@@ -78,6 +78,7 @@ def main() -> int:
                 print("SELFTEST OK ->", out)
             except Exception as e:  # noqa: BLE001
                 print("SELFTEST FAIL ->", e)
+            win._quitting = True   # 跳过关闭弹窗，直接退出
             app.quit()
 
         QTimer.singleShot(2500, _selftest)

@@ -101,11 +101,14 @@ class Wizard(QDialog):
         self.name_edit = QLineEdit()
         self.tags_edit = QLineEdit()
         self.appear_edit = QPlainTextEdit()
-        self.appear_edit.setMinimumHeight(150)
+        self.appear_edit.setMinimumHeight(110)
+        self.persona_edit = QPlainTextEdit()
+        self.persona_edit.setMinimumHeight(120)
         f.addRow("名字", self.name_edit)
         f.addRow("标签", self.tags_edit)
         f.addRow("形象（配图）", self.appear_edit)
-        f.addRow("", QLabel("形象会原样写进文生图提示词，可按喜好改。"))
+        f.addRow("人设（说话风格）", self.persona_edit)
+        f.addRow("", QLabel("形象会原样写进文生图提示词；人设留空用默认。"))
         return w
 
     def _behaviour(self) -> QWidget:
@@ -158,6 +161,8 @@ class Wizard(QDialog):
         self.name_edit.setText(cfg.get("fish.name", "大肥鱼"))
         self.tags_edit.setText(cfg.get("fish.tags", ""))
         self.appear_edit.setPlainText(cfg.get("fish.appearance", ""))
+        from ..persona import DEFAULT_PERSONA
+        self.persona_edit.setPlainText(cfg.get("fish.persona", "") or DEFAULT_PERSONA)
         self.interval.setValue(int(cfg.get("fish.interval_min", 20) or 20))
         self.limit_hlx.setValue(int(cfg.get("autopost.daily_limit_hlx", 2) or 2))
         self.limit_lj.setValue(int(cfg.get("autopost.daily_limit_lingjie", 2) or 2))
@@ -179,6 +184,7 @@ class Wizard(QDialog):
         cfg.set("fish.name", self.name_edit.text().strip() or "大肥鱼")
         cfg.set("fish.tags", self.tags_edit.text().strip())
         cfg.set("fish.appearance", self.appear_edit.toPlainText().strip())
+        cfg.set("fish.persona", self.persona_edit.toPlainText().strip())
         cfg.set("fish.interval_min", self.interval.value())
         cfg.set("autopost.daily_limit_hlx", self.limit_hlx.value())
         cfg.set("autopost.daily_limit_lingjie", self.limit_lj.value())
