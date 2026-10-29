@@ -116,6 +116,7 @@ class SettingsPage(Page):
         root = str(data_dir())
         files = str(data_dir() / "files")
         logs = str(data_dir() / "logs")
+        accounts = str(data_dir() / "账号")
 
         general = common.Card(padding=20, spacing=12)
         general.box.addWidget(common.card_title("通用"))
@@ -276,20 +277,21 @@ class SettingsPage(Page):
         paths.box.addWidget(common.card_title("目录"))
         paths.box.addWidget(common.line())
         paths.box.addLayout(_PathRow("数据目录", root))
-        paths.box.addLayout(_PathRow("记忆文件", files))
+        paths.box.addLayout(_PathRow("账号记忆目录", accounts))
+        paths.box.addLayout(_PathRow("公共文件（生活记忆等）", files))
         paths.box.addLayout(_PathRow("日志目录", logs))
         paths.box.addLayout(_PathRow("调试日志", str(DBG.path), open_file=True))
         paths.box.addWidget(common.hint(
-            "用户记忆按平台分开：mem_hlx_u<uid>.txt / mem_lingjie_u<uid>.txt；"
-            "通用记忆和生活记忆两个社区共用。"))
+            "通用记忆、用户记忆、动态、心情都在「账号记忆目录」下，"
+            "按 平台/uid 分开；生活记忆是共享的，在公共文件里。"))
         self.body.addWidget(paths)
 
         data = common.Card(padding=20, spacing=12)
         data.box.addWidget(common.card_title("数据"))
         data.box.addWidget(common.hint(
-            "记忆文件在 files/ 目录下：memory.txt（通用记忆）、mem_<平台>_u<uid>.txt（用户记忆）、"
-            "life.txt（生活记录）、mood.json（心情）、relations.json（亲密度）、"
-            "activity.jsonl（动态）、auto_state.json（消息去重）。"))
+            "记忆在「账号记忆目录/平台/uid/」下：memory.txt（通用记忆）、"
+            "mem_<平台>_u<uid>.txt（用户记忆）、activity.jsonl（动态）、mood.json（心情）；"
+            "生活记忆和全局关系在公共文件里。"))
         row = QHBoxLayout()
         b1 = common.button("清空大肥鱼记忆")
         b1.clicked.connect(self.clear_memory)

@@ -119,7 +119,7 @@ def auto_post(platform: str, board_id: int = 0, board_name: str = "",
         if review:
             result["msg"] = (msg + "（审核中）") if msg else "已提交（审核中）"
         memory.remember(f"我自己在「{board_name}」发了帖子《{title}》：{content}",
-                        platform=platform)
+                        platform=platform, kind="post")
         record("post", f"自动发帖《{title}》（{board_name}）"
                        + ("（审核中）" if review else ""), platform, board=board_name)
     return result
