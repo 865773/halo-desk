@@ -245,12 +245,10 @@ class HomePage(Page):
     def missing_items(self) -> list[str]:
         cfg = self.app.cfg
         miss = []
-        if not cfg.get("hlx.key", ""):
-            miss.append("葫芦侠未登录")
-        if not cfg.get("lingjie.token", ""):
-            miss.append("灵芥未登录")
+        if not (cfg.get("hlx.key", "") or cfg.get("lingjie.token", "")):
+            miss.append("至少登录一个平台（葫芦侠或灵芥）")
         if not cfg.get("ai.key", ""):
-            miss.append("DeepSeek Key 未配置")
+            miss.append("AI Key 未配置")
         return miss
 
     def _toggle_master(self, state) -> None:

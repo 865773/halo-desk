@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget,
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QTextBrowser)
 
 from ..config import FILES_DIR
@@ -32,6 +32,11 @@ class UserMemoryCard(common.Card):
         self.box.addWidget(common.hint(
             "大肥鱼对每个人的记忆：点名单看内容；超过 "
             f"{mem_limit('user')} 字会自动总结压缩。"))
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("搜索昵称 / uid / 记忆内容")
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(self._apply_filter)
+        self.box.addWidget(self.search)
 
         row = QHBoxLayout()
         row.setSpacing(10)
@@ -105,8 +110,10 @@ class UserMemoryCard(common.Card):
             except Exception:
                 nick = ""
             lines = 0
+            content = ""
             try:
-                lines = sum(1 for ln in p.read_text("utf-8").splitlines() if ln.strip())
+                content = p.read_text("utf-8")
+                lines = sum(1 for ln in content.splitlines() if ln.strip())
             except Exception:
                 pass
             label = f"{nick or 'uid=' + str(uid)}  ·  {uid}"
@@ -114,6 +121,7 @@ class UserMemoryCard(common.Card):
             item.setToolTip(f"{lines} 条 · {p.stat().st_size} 字节")
             item.setData(Qt.UserRole, str(p))
             item.setData(Qt.UserRole + 1, uid)
+            item.setData(Qt.UserRole + 2, content)
             self.lst.addItem(item)
             self.paths[str(p)] = label
             if cur and str(p) == str(cur):
@@ -122,6 +130,25 @@ class UserMemoryCard(common.Card):
             self.lst.setCurrentRow(0)
         elif not self.lst.count():
             self.view.setPlainText("这一边还没有用户记忆。等大肥鱼在这里和人聊过，就会出现。")
+        self._apply_filter(self.search.text())
+
+    def _apply_filter(self, text: str) -> None:
+        q = (text or "").strip().lower()
+        shown = 0
+        for i in range(self.lst.count()):
+            it = self.lst.item(i)
+            hay = str(it.data(Qt.UserRole + 2) or "")
+            if not q:
+                it.setHidden(False)
+                shown += 1
+                continue
+            if q not in str(it.text()).lower() and q not in hay.lower():
+                it.setHidden(True)
+                continue
+            it.setHidden(False)
+            shown += 1
+        if q and shown == 0:
+            self.view.setPlainText(f"没有找到包含「{text.strip()}」的记忆。")
 
     @staticmethod
     def _uid_of(name: str) -> int:

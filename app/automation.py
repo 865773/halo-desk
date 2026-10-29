@@ -265,6 +265,8 @@ def run_intents(intents: list[str], hlx=None, lj=None, max_steps: int | None = N
                 platform = post_platform or CFG.get("autopost.platform", "hlx") or "hlx"
                 if platform == "hlx" and not CFG.get("hlx.key", ""):
                     platform = "lingjie"
+                elif platform == "lingjie" and not CFG.get("lingjie.token", ""):
+                    platform = "hlx"
                 res = auto_post(platform, int(CFG.get("autopost.board_id", 0) or 0),
                                 CFG.get("autopost.board_name", "") or "",
                                 client=hlx if platform == "hlx" else lj)
@@ -371,6 +373,8 @@ class AutoPilot(QObject):
     # ---------- 自由行动：让大肥鱼自己决定做什么 ----------
     def _intent_tick(self) -> None:
         if self._intent_busy or not CFG.get("auto.enabled", False):
+            return
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
             return
         if not CFG.get("ai.key", ""):
             return
