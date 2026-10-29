@@ -580,6 +580,8 @@ def main() -> int:
           brain.owner_doc("hlx")[:30])
 
     ljv = FakeLj()
+    CFG.set("fish.last_visit_any", 0)
+    CFG.set("fish.last_visit_lingjie_60", 0)
     vs = roam.visit_user("lingjie", 60, dry_run=False, log=lambda _m: None, client=ljv)
     check("去别人主页看帖子并互动", bool(vs.get("seen")) and bool(vs.get("actions")),
           (vs.get("seen"), vs.get("actions")))

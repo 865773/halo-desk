@@ -441,9 +441,26 @@ def visit_user(platform: str, uid: int = 0, dry_run: bool = False, log=print,
             pass
     seen = _load_ids(_seen_path(platform))
     commented = _load_ids(_commented_path(platform))
+    # 拜访频率限制：全局 1 分钟最多一次；同一个人 30 分钟内不重复拜访
+    now = time.time()
+    last_any = float(CFG.get("fish.last_visit_any", 0) or 0)
+    last_uid = float(CFG.get(f"fish.last_visit_{platform}_{uid}", 0) or 0)
+    if now - last_any < 60:
+        summary["errors"].append("刚去过主页，先等一分钟")
+        return summary
+    if now - last_uid < 1800:
+        summary["errors"].append(f"半小时内已经去过 @{nick} 的主页了")
+        return summary
+    CFG.set("fish.last_visit_any", now)
+    CFG.set(f"fish.last_visit_{platform}_{uid}", now)
+    CFG.save()
     _VISITING["on"] = True
     try:
         for p in posts[:1]:
+            pid = _post_id(p, platform)
+            if not pid or pid in seen or pid in commented:
+                summary["errors"].append("这个帖子已经看过/评论过了")
+                continue
             post = dict(p)
             post["_cat_id"] = 0
             _process(client, platform, post, 0, f"@{nick} 的主页", summary,
