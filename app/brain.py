@@ -57,19 +57,25 @@ def format_doc() -> str:
 
 
 def owner_doc(platform: str = "") -> str:
-    owner = 0
-    if platform:
-        owner = int(CFG.get(f"fish.owner_uid_{platform}", 0) or 0)
-        if not owner:
-            # 两个社区是同一个主人时，另一个平台填了就沿用
-            other = "lingjie" if platform == "hlx" else "hlx"
-            owner = int(CFG.get(f"fish.owner_uid_{other}", 0) or 0)
-    if not owner:
-        owner = int(CFG.get("fish.owner_uid", 0) or 0)
-    if owner <= 0:
+    hx = int(CFG.get("fish.owner_uid_hlx", 0) or 0)
+    lj = int(CFG.get("fish.owner_uid_lingjie", 0) or 0)
+    legacy = int(CFG.get("fish.owner_uid", 0) or 0)
+    hx = hx or legacy or lj          # 只填了一个平台时另一边沿用
+    lj = lj or legacy or hx
+    lines = []
+    if hx:
+        lines.append(f"你在葫芦侠三楼的主人是 uid {hx}")
+    if lj:
+        lines.append(f"你在灵芥空间的主人是 uid {lj}")
+    if not lines:
         return ""
-    return (f"【关于主人】你的主人 uid 是 {owner}：他的帖子、他的评论要格外认真回应；"
-            "他让你做的事优先级最高。在公开场合自然地叫他「主人」，不要解释这层关系。\n")
+    me = hx if platform == "hlx" else (lj if platform == "lingjie" else 0)
+    extra = ""
+    if me and platform:
+        extra = f"（现在你在{'葫芦侠三楼' if platform == 'hlx' else '灵芥空间'}，主人是 uid {me}）"
+    return ("【关于主人】" + "；".join(lines) + extra + "。"
+            "他的帖子、他的评论要格外认真回应；他让你做的事优先级最高。"
+            "在公开场合自然地叫他「主人」，不要解释这层关系。\n")
 
 
 def currency_doc(platform: str) -> str:
@@ -173,7 +179,7 @@ def decide(platform: str, state: str, uid: int = 0, nick: str = "",
            "并给出 reason。只输出一行 JSON。")
     for _ in range(3):
         try:
-            if images and _perm("vision", True):
+            if images and _perm("vision", True) and _ < 2:
                 raw = ai.chat_with_images(sys, ask + "\n【配图】已附上帖子图片。",
                                           images, CFG.get("ai.model_basic"))
             else:

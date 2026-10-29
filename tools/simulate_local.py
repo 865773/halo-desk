@@ -580,6 +580,34 @@ def main() -> int:
     check("去别人主页看帖子并互动", bool(vs.get("seen")) and bool(vs.get("actions")),
           (vs.get("seen"), vs.get("actions")))
 
+    # ---------- 7.14 主人双平台 / 主页动作 / 图片内联 ----------
+    CFG.set("fish.owner_uid_hlx", 111)
+    CFG.set("fish.owner_uid_lingjie", 222)
+    od = brain.owner_doc("lingjie")
+    check("主人提示词写清两个平台",
+          "你在葫芦侠三楼的主人是 uid 111" in od
+          and "你在灵芥空间的主人是 uid 222" in od, od[:60])
+
+    from app import roam as _roam
+    _orig_visit = _roam.visit_user
+    _roam.visit_user = lambda *a, **k: {"ok": True, "seen": 1,
+                                        "actions": ["点赞"],
+                                        "errors": [], "titles": ["t"]}
+    rv = execute("visit_profile", "lingjie", FakeLj(),
+                 {"kind": "user", "uid": 60}, {"reason": "想了解他"}, ctx={})
+    _roam.visit_user = _orig_visit
+    check("动作清单里的「看他主页」能执行", bool(rv.get("done")), rv)
+
+    from app import ai as _ai
+    from app import net as _net
+    _orig_bytes = _net.http_bytes
+    _net.http_bytes = lambda url, timeout=30: (
+        b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+    data_url = _ai._as_data_url("http://example.com/a.png")
+    _net.http_bytes = _orig_bytes
+    check("图片转成 base64 内联", data_url.startswith("data:image/png;base64,"),
+          data_url[:30])
+
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()
     hlx7.done_pids = {777}

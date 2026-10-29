@@ -35,6 +35,8 @@ for mask in range(1, 16):
 
 _add("follow_user", "只关注目标用户，不动帖子", ["follow"], need_post=False)
 _add("unfollow_user", "取消关注目标用户（需要 target.uid）", [], need_post=False)
+_add("visit_profile", "去目标用户的主页看他的帖子，自己挑一条决定看/点赞/评论"
+                      "（需要 target.uid；聊得来、想了解他时用）", [], need_post=False)
 _add("unlike_post", "取消点赞目标帖子", [], need_post=True)
 _add("unfavorite_post", "取消收藏目标帖子", [], need_post=True)
 _add("tip_post", "给目标帖子送平台货币（葫芦侠=葫芦，最多 5 个；灵芥=芥子，每次 1 个）；"
@@ -67,7 +69,8 @@ def catalog_text() -> str:
     for aid in combos:
         need = "，需要 content（15~40字口语评论）" if ACTIONS[aid]["need_content"] else ""
         lines.append(f"- {aid}：{ACTIONS[aid]['desc']}{need}")
-    for aid in ("follow_user", "unfollow_user", "unlike_post", "unfavorite_post",
+    for aid in ("follow_user", "unfollow_user", "visit_profile",
+                "unlike_post", "unfavorite_post",
                 "tip_post", "publish_post", "sign_in", "reply_comment", "nothing"):
         lines.append(f"- {aid}：{ACTIONS[aid]['desc']}")
     lines.append("")
@@ -98,6 +101,8 @@ def catalog_text() -> str:
                  '"content":"关注了，常来玩呀","reason":"聊得来"}')
     lines.append('- 只关注某人：{"action":"follow_user","target":{"kind":"user","uid":123},'
                  '"reason":"他让我关注"}')
+    lines.append('- 去他主页看看：{"action":"visit_profile","target":{"kind":"user","uid":123},'
+                 '"reason":"聊得来，想了解他"}')
     lines.append('- 回复消息：{"action":"reply_comment","content":"在的在的","reason":"他找我"}')
     lines.append('- 什么都不做：{"action":"nothing","reason":"没兴趣"}')
     return "\n".join(lines)
@@ -296,6 +301,24 @@ def execute(action: str, platform: str, client, target: dict | None,
         return res
 
     tgt = resolve_target(platform, client, target, ctx)
+    if action == "visit_profile":
+        uid = int((target or {}).get("uid", 0) or 0)
+        if not uid:
+            res["msg"] = "缺少 uid"
+            return res
+        from . import roam
+        if roam.in_visit():
+            res["msg"] = "已经在看主页了，别再套娃"
+            return res
+        s = roam.visit_user(platform, uid, dry_run=False, log=log, client=client)
+        done = s.get("actions") or []
+        if done:
+            record("system", f"去 uid={uid} 的主页看了帖子（{len(done)} 个动作）",
+                   platform, uid=uid, reason=reason)
+        res.update(ok=bool(done), done=done,
+                   msg="" if done else (s.get("errors") or ["他主页没有可看的帖子"])[0])
+        return res
+
     if action == "follow_user":
         uid = int((target or {}).get("uid", 0) or 0)
         if not uid:
@@ -461,6 +484,7 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
            f"下评论：\n{message.get('text') or ''}\n\n"
            "你可以只回一句话，也可以顺手做一件事（比如对方让你去他主页第一个帖子"
            "点赞/收藏/评论，或者让你关注/取关他）。\n"
+           "如果聊得来、想多了解对方，也可以用 visit_profile 去他主页翻帖子看看。\n"
            "注意：对方说「我 / 我的主页 / 我收藏的」指的是**对方自己**，要用 user_first/"
            "user_index（收藏类目标另说）；只有说「你 / 大肥鱼」时才用 my_*。\n"
            "target.kind=user_first/user_index/user 时，uid 必须填上面的对方 uid 或别人明确给的 uid。\n"

@@ -74,6 +74,14 @@ def post_json(url: str, obj: dict, headers: Optional[dict] = None,
     return http(url, "POST", body, hd, timeout)
 
 
+def http_bytes(url: str, timeout: float = 30.0) -> bytes:
+    """下载二进制（图片用）。"""
+    hd = {"User-Agent": UA, "Accept": "image/*,*/*"}
+    req = urllib.request.Request(url, headers=hd)
+    with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX) as resp:
+        return resp.read()
+
+
 def json_of(text: str) -> dict:
     """宽容解析：去掉前后杂字符，取第一个 { 到最后一个 }。"""
     if not text:

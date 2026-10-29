@@ -7,6 +7,7 @@ from typing import Callable, Optional
 
 from . import net
 from .config import CFG
+from .debuglog import DBG
 
 
 class AIError(Exception):
@@ -84,12 +85,37 @@ def ask_json(system: str, user: str, model: Optional[str] = None) -> dict:
     return net.json_of(text)
 
 
+def _as_data_url(url: str, max_bytes: int = 4 * 1024 * 1024) -> str:
+    """把图片下载成 data URL，避免服务端拉不到外链（七牛/防盗链/超时）。"""
+    import base64
+    if url.startswith("data:"):
+        return url
+    try:
+        raw = net.http_bytes(url, timeout=30)
+    except Exception as e:
+        DBG.log("VISION", f"图片下载失败：{str(e)[:80]}", "WARN")
+        return ""
+    if not raw or len(raw) > max_bytes:
+        DBG.log("VISION", f"图片为空或过大：{len(raw or b'')} 字节", "WARN")
+        return ""
+    mime = "image/png" if raw[:8] == b"\x89PNG\r\n\x1a\n" else "image/jpeg"
+    return f"data:{mime};base64," + base64.b64encode(raw).decode()
+
+
 def chat_with_images(system: str, user: str, image_urls: list[str],
                      model: Optional[str] = None) -> str:
     content: list[dict] = [{"type": "text", "text": user}]
+    got = 0
     for u in image_urls[:3]:
+        data = _as_data_url(u)
+        if not data:
+            continue
         content.append({"type": "image_url",
-                        "image_url": {"url": u, "detail": "low"}})
+                        "image_url": {"url": data, "detail": "low"}})
+        got += 1
+    if got == 0:
+        DBG.log("VISION", "没有可用图片，改按文字判断", "WARN")
+        content.append({"type": "text", "text": "（配图加载失败，按文字判断即可）"})
     msgs = []
     if system:
         msgs.append({"role": "system", "content": system})

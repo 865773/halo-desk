@@ -20,6 +20,12 @@ from .relations import REL
 
 PLATFORM_NAME = {"hlx": "葫芦侠三楼", "lingjie": "灵芥空间"}
 
+_VISITING = {"on": False}
+
+
+def in_visit() -> bool:
+    return bool(_VISITING.get("on"))
+
 
 def _seen_path(platform: str) -> Path:
     return FILES_DIR / f"roam_seen_{platform}.json"
@@ -403,14 +409,18 @@ def visit_user(platform: str, uid: int = 0, dry_run: bool = False, log=print,
             pass
     seen = _load_ids(_seen_path(platform))
     commented = _load_ids(_commented_path(platform))
-    for p in posts[:1]:
-        post = dict(p)
-        post["_cat_id"] = 0
-        _process(client, platform, post, 0, f"@{nick} 的主页", summary,
-                 seen, commented, dry_run, log)
-        summary["titles"].append(post.get("title", ""))
-        if dry_run:
-            break
+    _VISITING["on"] = True
+    try:
+        for p in posts[:1]:
+            post = dict(p)
+            post["_cat_id"] = 0
+            _process(client, platform, post, 0, f"@{nick} 的主页", summary,
+                     seen, commented, dry_run, log)
+            summary["titles"].append(post.get("title", ""))
+            if dry_run:
+                break
+    finally:
+        _VISITING["on"] = False
     if summary["actions"]:
         memory.remember(f"去 @{nick} 的主页看了帖子，做了 "
                         f"{len(summary['actions'])} 个动作")
