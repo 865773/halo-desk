@@ -139,6 +139,7 @@ class MainWindow(QMainWindow):
         self.autopilot.replied.connect(self._on_pet_reply)
         self.show_page(CFG.get("general.page", "home") or "home")
         QTimer.singleShot(1200, self._auto_signin)
+        QTimer.singleShot(1800, self._refresh_profiles)
 
     def _on_pet_reply(self, platform: str, nick: str, text: str) -> None:
         if self.pet is None or not self.pet.isVisible():
@@ -244,7 +245,7 @@ class MainWindow(QMainWindow):
     def open_pet(self, on: bool | None = None) -> None:
         if on is None:
             on = not (self.pet is not None and self.pet.isVisible())
-        CFG.set("fish.enabled", bool(on))
+        CFG.set("fish.pet_on", bool(on))
         CFG.save()
         fp = self.pages.get("fish")
         if fp is not None and hasattr(fp, "pet_on"):
@@ -260,6 +261,22 @@ class MainWindow(QMainWindow):
             self.pet.show_near_default()
         elif self.pet is not None:
             self.pet.hide()
+
+    def close_pet(self) -> None:
+        try:
+            if self.pet is not None:
+                self.pet.bubble.close()
+                self.pet.close()
+                self.pet = None
+        except Exception:
+            self.pet = None
+        CFG.set("fish.pet_on", False)
+        CFG.save()
+        fp = self.pages.get("fish")
+        if fp is not None and hasattr(fp, "pet_on"):
+            fp.pet_on.blockSignals(True)
+            fp.pet_on.setChecked(False)
+            fp.pet_on.blockSignals(False)
 
     def pet_resize(self) -> None:
         if self.pet is not None:
@@ -282,19 +299,79 @@ class MainWindow(QMainWindow):
     def _auto_signin(self) -> None:
         from ..signin_state import signed_today
         self._refresh_sidebar_status()
-        if self.cfg.get("fish.enabled", False):
+        enabled = self.cfg.get("fish.enabled", False)
+        if enabled and self.cfg.get("fish.pet_on", True):
             self.open_pet(True)
-        if self.cfg.get("hlx.key", "") and self.cfg.get("hlx.auto_signin", True):
+        # 每次打开自动检测：今天没签到就补签
+        if enabled and self.cfg.get("hlx.key", "") and self.cfg.get("hlx.auto_signin", True):
             if signed_today("hlx"):
                 self.pages["hlx"].status.setText("今天已经签到过了，跳过")
             else:
                 self.pages["hlx"].start_signin()
-        if self.cfg.get("lingjie.token", "") and self.cfg.get("lingjie.auto_signin", True):
+        if enabled and self.cfg.get("lingjie.token", "") \
+                and self.cfg.get("lingjie.auto_signin", True):
             if signed_today("lingjie"):
                 self.pages["lingjie"].status.setText("今天已经签到过了，跳过")
             else:
                 self.pages["lingjie"].start_signin()
-        self.autopilot.start()
+        if enabled:
+            self.autopilot.start()
+
+    def _refresh_profiles(self) -> None:
+        """后台刷新昵称/头像/等级，供总览显示。"""
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            return
+
+        def work(_e):
+            out = {}
+            try:
+                if CFG.get("hlx.key", ""):
+                    out["hlx"] = self.hlx.my_info()
+            except Exception:
+                pass
+            try:
+                if CFG.get("lingjie.token", ""):
+                    out["lj"] = self.lj.me()
+            except Exception:
+                pass
+            return out
+
+        def done(data):
+            from .. import net
+            from .home import _avatar_file
+            h = data.get("hlx") or {}
+            if h:
+                CFG.set("hlx.nick", h.get("nick", ""))
+                CFG.set("hlx.uid", int(h.get("userID", 0) or CFG.get("hlx.uid", 0)))
+                CFG.set("hlx.level", int(h.get("level", 0) or 0))
+                u = h.get("avatar") or ""
+                if u:
+                    try:
+                        _avatar_file("hlx").write_bytes(net.http_bytes(u, 20))
+                    except Exception:
+                        pass
+            l = data.get("lj") or {}
+            if l:
+                CFG.set("lingjie.nickname", l.get("nickname", ""))
+                CFG.set("lingjie.uid", int(l.get("uid", 0) or CFG.get("lingjie.uid", 0)))
+                CFG.set("lingjie.level", int(l.get("currentLv", 0) or 0))
+                CFG.set("lingjie.exp", int(l.get("exp", 0) or 0))
+                CFG.set("lingjie.next_exp", int(l.get("nextExp", 0) or 0))
+                u = l.get("avatar") or ""
+                if u:
+                    try:
+                        _avatar_file("lingjie").write_bytes(net.http_bytes(u, 20))
+                    except Exception:
+                        pass
+            CFG.save()
+            self.pages["home"].refresh()
+
+        from .common import run_bg
+        run_bg(work, done, lambda _e: None)
+
+    def show_wizard(self) -> None:
+        from .wizard import Wizard
+        Wizard(self).exec()
 
     def _tray_clicked(self, reason) -> None:
         if reason == QSystemTrayIcon.Trigger:
@@ -328,6 +405,30 @@ class MainWindow(QMainWindow):
             e.accept()
             return
         e.ignore()
-        self.hide()
-        self.tray.showMessage("大肥鱼还在后台", "点托盘图标可以再打开，右键菜单可以退出。",
-                              QSystemTrayIcon.Information, 2000)
+        from PySide6.QtWidgets import QMessageBox
+        box = QMessageBox(self)
+        box.setWindowTitle("关闭大肥鱼")
+        box.setText("要最小化到托盘继续后台运行，还是直接退出？")
+        b_min = box.addButton("最小化到托盘", QMessageBox.AcceptRole)
+        b_quit = box.addButton("退出程序", QMessageBox.DestructiveRole)
+        box.addButton("取消", QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is b_min:
+            self.hide()
+            self.tray.showMessage("大肥鱼还在后台运行",
+                                  "点托盘图标可以再打开，右键菜单可以退出。",
+                                  QSystemTrayIcon.Information, 2000)
+        elif box.clickedButton() is b_quit:
+            self.quit()
+
+    def changeEvent(self, e) -> None:  # noqa: N802
+        # 最小化时收进托盘，继续后台运行
+        if e.type() == e.Type.WindowStateChange and self.isMinimized():
+            e.ignore()
+            self.hide()
+            try:
+                self.tray.showMessage("大肥鱼在后台运行", "点托盘图标恢复窗口。",
+                                      QSystemTrayIcon.Information, 1500)
+            except Exception:
+                pass
+        super().changeEvent(e)

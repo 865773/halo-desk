@@ -1,6 +1,6 @@
 # 接管说明（HANDOVER）
 
-> 版本 **v4.6** · 2026-10-30 · Windows 10/11 x64
+> 版本 **v5.0** · 2026-10-30 · Windows 10/11 x64
 > 仓库：<https://gitee.com/guo-wenlong/halo-desk>（私有）
 > 前身：hlx-halo（葫芦侠三楼）+ lingjie-halo（灵芥空间），两个 Android 项目合并移植为 Windows 桌面程序。
 

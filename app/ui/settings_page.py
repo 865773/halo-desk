@@ -156,11 +156,14 @@ class SettingsPage(Page):
         b4.clicked.connect(self.clear_dedupe)
         b5 = common.button("导出数据备份", ghost=True)
         b5.clicked.connect(self.export_backup)
+        b6 = common.button("退出全部账号", ghost=True)
+        b6.clicked.connect(self.logout_all)
         row.addWidget(b1)
         row.addWidget(b2)
         row.addWidget(b3)
         row.addWidget(b4)
         row.addWidget(b5)
+        row.addWidget(b6)
         row.addStretch(1)
         data.box.addLayout(row)
         self.body.addWidget(data)
@@ -193,6 +196,26 @@ class SettingsPage(Page):
             common.toast(self.app, "已更新开机启动设置", "ok")
         else:
             common.toast(self.app, "设置失败（可能被安全软件拦截）", "err")
+
+    def logout_all(self) -> None:
+        from PySide6.QtWidgets import QMessageBox
+        if QMessageBox.question(self, "退出全部账号",
+                                "会清掉两个平台的登录态并停用大肥鱼，确定？") \
+                != QMessageBox.Yes:
+            return
+        for k in ("hlx.key", "hlx.uid", "hlx.nick", "hlx.level",
+                  "lingjie.token", "lingjie.uid", "lingjie.nickname",
+                  "lingjie.level", "lingjie.exp", "lingjie.next_exp"):
+            CFG.set(k, 0 if k.endswith(("uid", "level", "exp", "next_exp")) else "")
+        CFG.set("fish.enabled", False)
+        CFG.save()
+        try:
+            self.app.autopilot.stop()
+            self.app.close_pet()
+        except Exception:
+            pass
+        self.app.notify_accounts()
+        common.toast(self.app, "已退出全部账号", "ok")
 
     def export_backup(self) -> None:
         """把 data 目录打包到桌面，换机或备份用。"""

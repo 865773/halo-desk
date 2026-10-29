@@ -68,26 +68,14 @@ class AutoPage(Page):
 
         sign = common.Card(padding=20, spacing=12)
         stop = QHBoxLayout()
-        stop.addWidget(common.card_title("每日定时签到"))
+        stop.addWidget(common.card_title("签到"))
         stop.addStretch(1)
-        self.sign_on = QCheckBox("每天自动签到两个平台")
-        self.sign_on.setChecked(bool(CFG.get("auto.daily_signin", True)))
-        self.sign_on.stateChanged.connect(self._save_sign)
-        stop.addWidget(self.sign_on)
         sign.box.addLayout(stop)
         sign.box.addWidget(common.line())
+        sign.box.addWidget(common.hint(
+            "已改成每次打开程序自动检测：哪个平台今天没签到就自动补签，"
+            "不用再设定时时间。"))
         row2 = QHBoxLayout()
-        row2.addWidget(QLabel("签到时间"))
-        self.time_edit = QTimeEdit()
-        self.time_edit.setDisplayFormat("HH:mm")
-        t = CFG.get("auto.signin_time", "08:10") or "08:10"
-        try:
-            hh, mm = t.split(":")
-            self.time_edit.setTime(QTime(int(hh), int(mm)))
-        except Exception:
-            self.time_edit.setTime(QTime(8, 10))
-        self.time_edit.timeChanged.connect(self._save_time)
-        row2.addWidget(self.time_edit)
         row2.addStretch(1)
         self.sign_state = common.muted("")
         row2.addWidget(self.sign_state)

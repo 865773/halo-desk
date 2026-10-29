@@ -64,8 +64,9 @@ def main() -> int:
     win = MainWindow()
     win.show()
     if CFG.get("general.first_run", True):
-        CFG.set("general.first_run", False)
-        CFG.save()
+        from PySide6.QtCore import QTimer
+        from app.ui.wizard import Wizard
+        QTimer.singleShot(600, lambda: Wizard(win).exec())
     if "--selftest" in sys.argv:
         from PySide6.QtCore import QTimer
 
