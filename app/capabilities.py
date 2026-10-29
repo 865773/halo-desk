@@ -419,6 +419,20 @@ def execute(action: str, platform: str, client, target: dict | None,
                     visible = True
                 label = "评论" if visible else "评论（审核中）"
                 done.append(label)
+                try:
+                    from . import roam
+                    cpath = roam._commented_path(platform)
+                    ids = roam._load_ids(cpath)
+                    if pid not in ids:
+                        ids.append(pid)
+                        roam._save_ids(cpath, ids)
+                    spath = roam._seen_path(platform)
+                    sids = roam._load_ids(spath)
+                    if pid not in sids:
+                        sids.append(pid)
+                        roam._save_ids(spath, sids)
+                except Exception:
+                    pass
                 record("comment", f"评论《{title}》：{text}"
                                   + ("" if visible else "（审核中）"),
                        platform, pid=pid, uid=tgt.get("author_uid"), reason=reason)

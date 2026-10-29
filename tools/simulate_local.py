@@ -374,6 +374,9 @@ def main() -> int:
     from app.config import FILES_DIR as _FD0
     _cap0._LIKED_CACHE.pop("hlx", None)
     (_FD0 / "liked_hlx.json").unlink(missing_ok=True)
+    for _p in ("hlx", "lingjie"):
+        (_FD0 / f"roam_commented_{_p}.json").unlink(missing_ok=True)
+        (_FD0 / f"roam_seen_{_p}.json").unlink(missing_ok=True)
     res = execute("post_like_favorite_comment", "hlx", hlx4,
                   {"kind": "user_first", "uid": 88},
                   {"content": "翻到你第一条帖子啦", "reason": "对方让我来互动"}, ctx={})
@@ -580,6 +583,9 @@ def main() -> int:
           brain.owner_doc("hlx")[:30])
 
     ljv = FakeLj()
+    from app.config import FILES_DIR as _FDV
+    (_FDV / "roam_commented_lingjie.json").unlink(missing_ok=True)
+    (_FDV / "roam_seen_lingjie.json").unlink(missing_ok=True)
     CFG.set("fish.last_visit_any", 0)
     CFG.set("fish.last_visit_lingjie_60", 0)
     vs = roam.visit_user("lingjie", 60, dry_run=False, log=lambda _m: None, client=ljv)

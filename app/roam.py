@@ -156,6 +156,14 @@ def _process(client, platform: str, post: dict, board_id: int, board_name: str,
     post["_cat_id"] = board_id
     seen.append(pid)
     _save_ids(_seen_path(platform), seen)
+    try:
+        if pid in commented or client.has_my_comment(pid):
+            if pid not in commented:
+                commented.append(pid)
+                _save_ids(_commented_path(platform), commented)
+            return []
+    except Exception:
+        pass
 
     ctx = _post_context(post, platform, board_name)
     images = _images(post, platform)
