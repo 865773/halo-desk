@@ -197,21 +197,42 @@ class PetWindow(QWidget):
             parts.append("【最近的记忆】\n" + mem)
         return "\n".join(parts)
 
+    def _pat(self) -> None:
+        from .. import memory
+        memory.nudge_mood(3, "hlx", "被摸了摸头")
+        self.say("唔…摸头的话，尾巴会自己甩起来的。")
+        self._animate_once()
+
+    def _feed(self) -> None:
+        from .. import memory
+        memory.nudge_mood(5, "hlx", "吃到了白米饭")
+        self.say("白米饭！最喜欢了，再来一碗也吃得下。")
+
+    def _animate_once(self) -> None:
+        try:
+            self._tick = 0
+            self._timer.start(60)
+        except Exception:
+            pass
+
     def _menu(self, global_pos: QPoint) -> None:
         m = QMenu()
-        a1 = QAction("说句话", m)
-        a1.triggered.connect(self.pet)
-        a2 = QAction("打开主界面", m)
-        a2.triggered.connect(self.open_main.emit)
-        a3 = QAction("两个平台签到", m)
-        a3.triggered.connect(lambda: self.app.signin_all())
-        a4 = QAction("隐藏挂件", m)
-        a4.triggered.connect(lambda: self.app.open_pet(False))
-        m.addAction(a1)
-        m.addAction(a2)
-        m.addAction(a3)
+        a0 = QAction("摸摸头", m)
+        a0.triggered.connect(self._pat)
+        a1 = QAction("喂白米饭", m)
+        a1.triggered.connect(self._feed)
+        a2 = QAction("和她说句话", m)
+        a2.triggered.connect(self.pet)
+        a3 = QAction("打开主界面", m)
+        a3.triggered.connect(self.open_main.emit)
+        a4 = QAction("两个平台签到", m)
+        a4.triggered.connect(lambda: self.app.signin_all())
+        a5 = QAction("隐藏挂件", m)
+        a5.triggered.connect(lambda: self.app.open_pet(False))
+        for a in (a0, a1, a2, a3, a4):
+            m.addAction(a)
         m.addSeparator()
-        m.addAction(a4)
+        m.addAction(a5)
         m.exec(global_pos)
 
     def hideEvent(self, e) -> None:  # noqa: N802

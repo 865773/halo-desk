@@ -126,6 +126,12 @@ class Wizard(QDialog):
         self.img_models = QLineEdit()
         f.addRow("", common.button("一键填入阿里云（百炼）", primary=True,
                                    on_click=self._fill_aliyun))
+        self.img_state = QLabel("未测试（不配也能用）")
+        self.img_state.setObjectName("muted")
+        row = QHBoxLayout()
+        row.addWidget(common.button("测试文生图", on_click=self._test_image))
+        row.addWidget(self.img_state, 1)
+        f.addRow("", row)
         f.addRow("协议", self.img_proto)
         f.addRow("接口地址", self.img_url)
         f.addRow("Key", self.img_key)
@@ -323,6 +329,37 @@ class Wizard(QDialog):
         self.img_url.setText(ALIYUN_IMG_URL)
         self.img_model.setText("wan2.6-t2i")
         self.img_models.setText("wan2.5-t2i-preview,wanx2.1-t2i-turbo")
+
+    def _test_image(self) -> None:
+        if not self.img_key.text().strip():
+            common.toast(self.app, "先填文生图 Key", "warn")
+            return
+        CFG.set("fish.img_proto", self.img_proto.currentText())
+        CFG.set("fish.img_url", self.img_url.text().strip())
+        CFG.set("fish.img_key", self.img_key.text().strip())
+        CFG.set("fish.img_model", self.img_model.text().strip())
+        CFG.set("fish.img_models", self.img_models.text().strip())
+        CFG.save()
+        self.img_state.setText("生成中…")
+        from .common import run_bg
+
+        def work(_e):
+            from .. import imaging
+            return imaging.generate("一只蓝白配色、鲸鱼耳朵的可爱少女，坐在窗边，柔和光线")
+
+        def done(png):
+            if png:
+                self.img_state.setText(f"可用 ✔（{len(png) // 1024} KB）")
+                common.toast(self.app, "文生图可用", "ok")
+            else:
+                self.img_state.setText("不可用")
+                common.toast(self.app, "生成失败，检查 Key/模型", "error")
+
+        def fail(e):
+            self.img_state.setText("不可用")
+            common.toast(self.app, f"失败：{e}", "error")
+
+        run_bg(work, done, fail)
 
     def _login(self, platform: str) -> None:
         if platform == "hlx":

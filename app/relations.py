@@ -87,6 +87,27 @@ class Relations:
             uid = 0
         return f"{platform}@{uid}" if uid else platform
 
+    def rekey(self, platform: str) -> None:
+        """登录后调用：把裸平台键（登录前写的）并进 平台@uid。"""
+        try:
+            from .config import CFG
+            uid = int(CFG.get(f"{platform}.uid", 0) or 0)
+        except Exception:
+            uid = 0
+        if uid <= 0:
+            return
+        with self._lock:
+            key = f"{platform}@{uid}"
+            bare = self.data.pop(platform, None)
+            if isinstance(bare, dict) and bare:
+                cur = self.data.get(key)
+                if not isinstance(cur, dict):
+                    cur = {}
+                for k, v in bare.items():
+                    cur.setdefault(k, v)
+                self.data[key] = cur
+                self._save()
+
     def _bucket(self, platform: str) -> dict:
         key = self._key(platform)
         b = self.data.get(key)

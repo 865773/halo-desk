@@ -107,6 +107,7 @@ DEFAULTS: dict = {
     },
     "fish": {
         "enabled": False,
+        "pet_on": True,
         "name": "大肥鱼",
         "size": 150,
         "alpha": 1.0,

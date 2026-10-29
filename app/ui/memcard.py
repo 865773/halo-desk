@@ -37,17 +37,18 @@ class UserMemoryCard(common.Card):
         self.lst = QListWidget()
         self.lst.setFixedWidth(260)
         self.lst.setStyleSheet(
-            "QListWidget{font-size:12px;background:#0E1729;color:#E6EDF7;"
-            "border:1px solid #22304A;border-radius:10px;padding:4px;outline:none;}"
-            "QListWidget::item{padding:6px 8px;border-radius:6px;color:#E6EDF7;}"
-            "QListWidget::item:selected{background:#1B2942;color:#FFFFFF;}")
+            f"QListWidget{{font-size:12px;background:{theme.FIELD};"
+            f"color:{theme.TEXT};border:1px solid {theme.LINE};"
+            f"border-radius:10px;padding:4px;outline:none;}}"
+            f"QListWidget::item{{padding:6px 8px;border-radius:6px;color:{theme.TEXT};}}"
+            f"QListWidget::item:selected{{background:{theme.SEL};color:{theme.TEXT};}}")
         self.lst.currentItemChanged.connect(lambda *_: self._show())
         row.addWidget(self.lst)
 
         self.view = QTextBrowser()
         self.view.setStyleSheet(
-            "font-size:12px;background:#0E1729;color:#E6EDF7;"
-            "border:1px solid #22304A;border-radius:10px;padding:10px;")
+            f"font-size:12px;background:{theme.FIELD};color:{theme.TEXT};"
+            f"border:1px solid {theme.LINE};border-radius:10px;padding:10px;")
         self.view.setPlaceholderText("左边点一个名字")
         row.addWidget(self.view, 1)
         self.box.addLayout(row)

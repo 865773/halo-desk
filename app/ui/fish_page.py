@@ -33,7 +33,6 @@ class FishPage(Page):
         self._build_ai()
         self._build_image()
         self._build_persona()
-        self._build_pet()
         self._build_publish()
         self._build_manage()
         self._build_chat()

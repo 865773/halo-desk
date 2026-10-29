@@ -190,12 +190,13 @@ QTabBar::tab:selected {{ background: {p['CARD']}; color: {p['ACCENT']}; }}
 
 def _set_globals(p: dict) -> None:
     global BG, BG2, CARD, CARD2, LINE, TEXT, MUTED, ACCENT, ACCENT2
-    global OK, WARN, ERR, P, QSS
+    global OK, WARN, ERR, FIELD, SEL, P, QSS
     P = dict(p)
     BG = p["BG"]; BG2 = p["BG2"]; CARD = p["CARD"]; CARD2 = p["CARD2"]
     LINE = p["LINE"]; TEXT = p["TEXT"]; MUTED = p["MUTED"]
     ACCENT = p["ACCENT"]; ACCENT2 = p["ACCENT2"]; OK = p["OK"]
     WARN = p["WARN"]; ERR = p["ERR"]
+    FIELD = p["FIELD"]; SEL = p["SEL"]
     QSS = _template(p)
 
 

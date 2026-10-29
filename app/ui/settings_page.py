@@ -133,6 +133,31 @@ class SettingsPage(Page):
             "写入当前用户的注册表启动项（HKCU\\...\\Run），不需要管理员权限。"))
         self.body.addWidget(general)
 
+        pet = common.Card(padding=20, spacing=12)
+        pet.box.addWidget(common.card_title("桌面挂件"))
+        self.pet_on = QCheckBox("启用桌面挂件（默认开启）")
+        self.pet_on.setChecked(bool(CFG.get("fish.pet_on", True)))
+        self.pet_on.stateChanged.connect(
+            lambda s: (CFG.set("fish.pet_on", bool(s)), CFG.save(),
+                       self.app.open_pet(bool(s))))
+        pet.box.addWidget(self.pet_on)
+        prow = QHBoxLayout()
+        prow.addWidget(QLabel("大小"))
+        self.pet_size = QSpinBox()
+        self.pet_size.setRange(80, 320)
+        self.pet_size.setSuffix(" px")
+        self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))
+        self.pet_size.valueChanged.connect(
+            lambda v: (CFG.set("fish.size", int(v)), CFG.save(),
+                       self.app.pet_resize()))
+        prow.addWidget(self.pet_size)
+        prow.addStretch(1)
+        pet.box.addLayout(prow)
+        pet.box.addWidget(common.hint(
+            "左键拖动；双击打开主界面；右键菜单：摸摸头（心情+3）、喂白米饭（心情+5）、"
+            "和她说句话、两个平台签到、隐藏挂件。挂件独立于总开关，关掉总开关也会留着。"))
+        self.body.addWidget(pet)
+
         paths = common.Card(padding=20, spacing=10)
         paths.box.addWidget(common.card_title("目录"))
         paths.box.addWidget(common.line())

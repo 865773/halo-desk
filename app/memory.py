@@ -186,8 +186,9 @@ def mem_limit(kind: str) -> int:
     return max(200, int(CFG.get(key, default) or default))
 
 
-def compress(path, kind: str = "general", keep_ratio: float = 0.55) -> bool:
-    """超过字数上限就让大肥鱼总结一次，只留关键节点。"""
+def compress(path, kind: str = "general", keep_ratio: float = 0.55,
+             force: bool = False) -> bool:
+    """超过字数上限就让大肥鱼总结一次，只留关键节点。force=True 时手动也压。"""
     key = str(path)
     if key in _COMPRESSING:
         return False
@@ -196,7 +197,9 @@ def compress(path, kind: str = "general", keep_ratio: float = 0.55) -> bool:
     except Exception:
         return False
     limit = mem_limit(kind)
-    if len(raw) <= limit:
+    if len(raw) < limit and not force:
+        return False
+    if len(raw) < 120:
         return False
     _COMPRESSING.add(key)
     try:
@@ -239,7 +242,9 @@ def user_count(platform: str = "") -> int:
 
 def maybe_compress(path, kind: str = "general") -> None:
     try:
-        if path.exists() and path.stat().st_size > mem_limit(kind):
+        if not path.exists():
+            return
+        if len(path.read_text("utf-8")) >= mem_limit(kind):
             compress(path, kind)
     except Exception:
         pass

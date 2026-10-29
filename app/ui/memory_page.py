@@ -52,6 +52,16 @@ class MemoryPage(Page):
         self.which.blockSignals(True)
         self.which.clear()
         self.paths = {}
+        cfg = self.app.cfg
+        platform = "hlx" if cfg.get("hlx.key", "") else (
+            "lingjie" if cfg.get("lingjie.token", "") else "")
+        if not platform:
+            self.which.blockSignals(False)
+            self.view.setPlainText(
+                "还没登录。\n登录账号后，这里显示该账号的通用记忆和生活记忆；"
+                "切换账号会换成对应账号的内容。")
+            self.stat.setText("")
+            return
 
         def add(label: str, path, allow_missing: bool = False):
             if path is None:
@@ -62,8 +72,8 @@ class MemoryPage(Page):
             self.paths[name] = str(path)
             self.which.addItem(name)
 
-        add("通用记忆", memory.MEMORY_FILE, allow_missing=True)
-        add("生活记忆", memory.LIFE_FILE, allow_missing=True)
+        add("通用记忆", memory.general_file(platform), allow_missing=True)
+        add("生活记忆", memory.life_file(platform), allow_missing=True)
         # 用户记忆放到各自社区页里，这里只留通用/生活
 
         if cur in self.paths:
@@ -112,7 +122,7 @@ class MemoryPage(Page):
             return
         self.stat.setText("正在让大肥鱼总结…（可能要十几秒）")
         common.run_bg(
-            lambda _e: memory.compress(path, kind),
+            lambda _e: memory.compress(path, kind, force=True),
             lambda ok: (self._load(),
                         common.toast(self.app, "已压缩" if ok else "还没到上限，不用压缩",
                                      "ok" if ok else "")),

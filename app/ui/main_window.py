@@ -186,7 +186,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v6.1 · 桌面合并版")
+        ver = QLabel("v6.2 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -239,6 +239,9 @@ class MainWindow(QMainWindow):
             from .. import memory
             memory.ensure_account("hlx")
             memory.ensure_account("lingjie")
+            from ..relations import REL
+            REL.rekey("hlx")
+            REL.rekey("lingjie")
         except Exception:
             pass
         self._refresh_sidebar_status()
@@ -320,7 +323,7 @@ class MainWindow(QMainWindow):
         from ..signin_state import signed_today
         self._refresh_sidebar_status()
         enabled = self.cfg.get("fish.enabled", False)
-        if enabled and self.cfg.get("fish.pet_on", True):
+        if self.cfg.get("fish.pet_on", True):
             self.open_pet(True)
         # 每次打开自动检测：今天没签到就补签
         if enabled and self.cfg.get("hlx.key", "") and self.cfg.get("hlx.auto_signin", True):
