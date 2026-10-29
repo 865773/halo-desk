@@ -154,6 +154,8 @@ class SettingsPage(Page):
         prow.addWidget(self.pet_size, 1)
         prow.addWidget(self.pet_size_lb)
         pet.box.addLayout(prow)
+        pet.box.addWidget(common.button("查看所有形象 / 动作", ghost=True,
+                                        on_click=self.show_pet_gallery))
         pet.box.addWidget(common.hint(
             "左键拖动；双击打开主界面；右键菜单：摸摸头（心情+3）、喂白米饭（心情+5）、"
             "和她说句话、两个平台签到、隐藏挂件。挂件独立于总开关，关掉总开关也会留着。"))
@@ -432,6 +434,92 @@ class SettingsPage(Page):
         lb.setAlignment(Qt.AlignCenter)
         lay.addWidget(lb)
         lay.addWidget(QLabel("谢谢支持～"))
+        dlg.exec()
+
+    def show_pet_gallery(self) -> None:
+        """预览所有形象/动作；关闭对话框恢复默认待机。"""
+        from PySide6.QtCore import QTimer
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        from ..paths import resource
+
+        faces = [("idle", "待机呼吸"), ("happy", "开心跃动"),
+                 ("shy", "害羞惊讶"), ("angry", "傲娇生气"),
+                 ("drag", "被拖拽悬空"), ("eat", "偷吃零食")]
+        dlg = QDialog(self)
+        dlg.setWindowTitle("所有形象 / 动作")
+        dlg.resize(560, 480)
+        lay = QVBoxLayout(dlg)
+        body = QHBoxLayout()
+        lst = QListWidget()
+        lst.setFixedWidth(180)
+        for key, name in faces:
+            it = QListWidgetItem(name)
+            it.setData(Qt.UserRole, key)
+            lst.addItem(it)
+        body.addWidget(lst)
+        preview = QLabel("选一个看看")
+        preview.setAlignment(Qt.AlignCenter)
+        preview.setMinimumSize(300, 340)
+        preview.setStyleSheet(f"background:{theme.CARD2};"
+                              f"border:1px solid {theme.LINE};border-radius:10px;")
+        body.addWidget(preview, 1)
+        lay.addLayout(body)
+        tip = QLabel("关闭或点「恢复默认」会回到待机状态。")
+        tip.setObjectName("muted")
+        lay.addWidget(tip)
+
+        frames: list[QPixmap] = []
+        idx = {"i": 0}
+
+        def load(key: str) -> None:
+            nonlocal frames
+            frames = []
+            for i in range(16):
+                pm = QPixmap(resource(f"assets/pet/shenshen/{key}_{i}.png"))
+                if pm.isNull():
+                    break
+                frames.append(pm)
+            idx["i"] = 0
+            show()
+
+        def show() -> None:
+            if not frames:
+                preview.setText("没有找到这个动作")
+                return
+            pm = frames[idx["i"] % len(frames)]
+            preview.setPixmap(pm.scaled(preview.width() - 12,
+                                        preview.height() - 12,
+                                        Qt.KeepAspectRatio,
+                                        Qt.SmoothTransformation))
+
+        timer = QTimer(dlg)
+        timer.setInterval(140)
+        timer.timeout.connect(lambda: (idx.__setitem__("i", idx["i"] + 1), show()))
+        timer.start()
+
+        def on_select(_row: int) -> None:
+            it = lst.currentItem()
+            if not it:
+                return
+            key = it.data(Qt.UserRole)
+            load(key)
+            if self.app.pet is not None:
+                self.app.pet.set_face(key, 0)
+
+        def restore() -> None:
+            if self.app.pet is not None:
+                self.app.pet.reset_face()
+            dlg.reject()
+
+        lst.currentRowChanged.connect(on_select)
+        lst.setCurrentRow(0)
+        dlg.rejected.connect(
+            lambda: self.app.pet.reset_face() if self.app.pet is not None else None)
+        brow = QHBoxLayout()
+        brow.addStretch(1)
+        brow.addWidget(common.button("恢复默认", primary=True, on_click=restore))
+        brow.addWidget(common.button("关闭", ghost=True, on_click=restore))
+        lay.addLayout(brow)
         dlg.exec()
 
     def _fill_ai_aliyun(self) -> None:

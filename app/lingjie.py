@@ -141,13 +141,17 @@ class LingjieClient:
         self.cfg.save()
 
     def check_login(self) -> bool:
-        if not self.token:
-            return False
         try:
-            st = self.sign_status(1)
-            return self._ok(st) or bool(st.get("data"))
+            return self.probe_login()
         except Exception:
             return False
+
+    def probe_login(self) -> bool:
+        """只判断登录态；网络错误会抛异常，避免把断网当成失效。"""
+        if not self.token:
+            return False
+        st = self.sign_status(1)
+        return self._ok(st) or bool(st.get("data"))
 
     # ---------- 用户 ----------
     def me(self) -> dict:

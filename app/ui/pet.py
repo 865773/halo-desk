@@ -123,6 +123,13 @@ class PetWindow(QWidget):
             self._pix = seq[0]
             self.update()
 
+    def reset_face(self) -> None:
+        try:
+            self._face_timer.stop()
+        except Exception:
+            pass
+        self._reset_face()
+
     def show_near_default(self) -> None:
         x = CFG.get("fish.pos_x", -1)
         y = CFG.get("fish.pos_y", -1)

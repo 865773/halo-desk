@@ -124,13 +124,17 @@ class HlxClient:
             return False
 
     def check_login(self) -> bool:
-        if not self.key:
-            return False
         try:
-            obj = self._json(self._get(f"{BASE}/user/status/ANDROID/2.1?{self.auth()}"))
-            return int(obj.get("status", 0) or 0) == 1
+            return self.probe_login()
         except Exception:
             return False
+
+    def probe_login(self) -> bool:
+        """只判断登录态；网络错误会抛异常，避免把断网当成失效。"""
+        if not self.key:
+            return False
+        obj = self._json(self._get(f"{BASE}/user/status/ANDROID/2.1?{self.auth()}"))
+        return int(obj.get("status", 0) or 0) == 1
 
     def logout(self) -> None:
         for k in ("key", "uid", "nick", "avatar", "level"):
