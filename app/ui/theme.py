@@ -116,6 +116,17 @@ QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
 
 QTextBrowser {{ background: #0E1729; border: 1px solid {LINE}; border-radius: 12px; padding: 8px; }}
+QListWidget, QListView {{
+    background: #0E1729;
+    color: {TEXT};
+    border: 1px solid {LINE};
+    border-radius: 10px;
+    outline: none;
+    padding: 4px;
+}}
+QListWidget::item {{ padding: 6px 8px; border-radius: 6px; color: {TEXT}; }}
+QListWidget::item:selected {{ background: #1B2942; color: #FFFFFF; }}
+QListWidget::item:hover {{ background: #16233A; }}
 
 QCheckBox::indicator {{
     width: 16px; height: 16px; border-radius: 5px;

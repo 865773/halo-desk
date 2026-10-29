@@ -35,12 +35,18 @@ class UserMemoryCard(common.Card):
         row.setSpacing(10)
         self.lst = QListWidget()
         self.lst.setFixedWidth(260)
-        self.lst.setStyleSheet("font-size:12px;")
+        self.lst.setStyleSheet(
+            "QListWidget{font-size:12px;background:#0E1729;color:#E6EDF7;"
+            "border:1px solid #22304A;border-radius:10px;padding:4px;outline:none;}"
+            "QListWidget::item{padding:6px 8px;border-radius:6px;color:#E6EDF7;}"
+            "QListWidget::item:selected{background:#1B2942;color:#FFFFFF;}")
         self.lst.currentItemChanged.connect(lambda *_: self._show())
         row.addWidget(self.lst)
 
         self.view = QTextBrowser()
-        self.view.setStyleSheet("font-size:12px;")
+        self.view.setStyleSheet(
+            "font-size:12px;background:#0E1729;color:#E6EDF7;"
+            "border:1px solid #22304A;border-radius:10px;padding:10px;")
         self.view.setPlaceholderText("左边点一个名字")
         row.addWidget(self.view, 1)
         self.box.addLayout(row)
