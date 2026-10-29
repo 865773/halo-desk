@@ -82,7 +82,7 @@ class MemoryPage(Page):
             self.which.addItem(name)
 
         add("通用记忆", memory.general_file(platform), allow_missing=True)
-        add("生活记忆", memory.life_file(platform), allow_missing=True)
+        add("生活记忆（共享）", memory.LIFE_FILE, allow_missing=True)
         # 用户记忆放到各自社区页里，这里只留通用/生活
 
         if cur in self.paths:

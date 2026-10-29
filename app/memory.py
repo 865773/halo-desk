@@ -271,7 +271,10 @@ def life_append(text: str, platform: str = "") -> None:
 
 
 def recent_life(n: int = 5, platform: str = "") -> str:
-    return "\n".join(read_lines(life_file(platform), n))
+    lines = read_lines(life_file(platform), n) if platform else []
+    if not lines:
+        lines = read_lines(LIFE_FILE, n)
+    return "\n".join(lines)
 
 
 def reset_life_if_new_day() -> None:
