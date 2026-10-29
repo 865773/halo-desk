@@ -254,6 +254,7 @@ class HomePage(Page):
         cfg = self.app.cfg
         if not state:
             cfg.set("fish.enabled", False)
+            cfg.set("auto.enabled", False)
             cfg.save()
             self.app.autopilot.stop()
             self.app.close_pet()
@@ -270,6 +271,7 @@ class HomePage(Page):
                 "\n\n可以点「首次配置向导」按步骤来。")
             return
         cfg.set("fish.enabled", True)
+        cfg.set("auto.enabled", True)
         cfg.save()
         self.app.autopilot.start()
         common.toast(self.app, "大肥鱼已启动", "ok")

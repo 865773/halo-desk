@@ -9,7 +9,7 @@ from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
                                QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                               QSpinBox, QVBoxLayout, QWidget)
+                               QSlider, QSpinBox, QVBoxLayout, QWidget)
 
 from .. import memory
 from ..config import CFG, data_dir
@@ -144,15 +144,15 @@ class SettingsPage(Page):
         pet.box.addWidget(self.pet_on)
         prow = QHBoxLayout()
         prow.addWidget(QLabel("大小"))
-        self.pet_size = QSpinBox()
+        self.pet_size = QSlider(Qt.Horizontal)
         self.pet_size.setRange(80, 320)
-        self.pet_size.setSuffix(" px")
         self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))
-        self.pet_size.valueChanged.connect(
-            lambda v: (CFG.set("fish.size", int(v)), CFG.save(),
-                       self.app.pet_resize()))
-        prow.addWidget(self.pet_size)
-        prow.addStretch(1)
+        self.pet_size.setMinimumWidth(240)
+        self.pet_size_lb = QLabel(f"{self.pet_size.value()} px")
+        self.pet_size_lb.setFixedWidth(60)
+        self.pet_size.valueChanged.connect(self._pet_size_changed)
+        prow.addWidget(self.pet_size, 1)
+        prow.addWidget(self.pet_size_lb)
         pet.box.addLayout(prow)
         pet.box.addWidget(common.hint(
             "左键拖动；双击打开主界面；右键菜单：摸摸头（心情+3）、喂白米饭（心情+5）、"
@@ -435,6 +435,12 @@ class SettingsPage(Page):
         custom = self.ai_provider.currentIndex() == 1
         self.ds_box.setVisible(not custom)
         self.custom_box.setVisible(custom)
+
+    def _pet_size_changed(self, v: int) -> None:
+        self.pet_size_lb.setText(f"{int(v)} px")
+        CFG.set("fish.size", int(v))
+        CFG.save()
+        self.app.pet_resize()
 
     def _fill_aliyun(self) -> None:
         self.img_proto.setCurrentIndex(max(0, self.img_proto.findData("dashscope")))

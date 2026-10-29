@@ -426,6 +426,7 @@ class Wizard(QDialog):
             self.hint.setText("还差：" + "、".join(self._missing()))
             return
         CFG.set("fish.enabled", True)
+        CFG.set("auto.enabled", True)
         CFG.save()
         self.app.autopilot.start()
         common.toast(self.app, "配置完成，大肥鱼已启用", "ok")

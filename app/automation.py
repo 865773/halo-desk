@@ -313,6 +313,10 @@ class AutoPilot(QObject):
     # ---------- 生命周期 ----------
     def start(self) -> None:
         started = []
+        # 总开关打开就等于启用自动任务（老的 auto.enabled 自动迁移）
+        if CFG.get("fish.enabled", False) and not CFG.get("auto.enabled", False):
+            CFG.set("auto.enabled", True)
+            CFG.save()
         if CFG.get("auto.enabled", False):
             sec = max(5, int(CFG.get("auto.poll_sec", 10) or 10))
             self.poll_timer.setInterval(sec * 1000)

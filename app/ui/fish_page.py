@@ -662,11 +662,12 @@ class FishPage(Page):
             else:
                 html.append(
                     f"<div style='margin:8px 0'>"
-                    f"<span style='background:#1B2942;color:{theme.TEXT};"
+                    f"<span style='background:{theme.CARD2};color:{theme.TEXT};"
+                    f"border:1px solid {theme.LINE};"
                     f"border-radius:10px;padding:6px 10px;display:inline-block'>"
                     f"{text}</span></div>")
         self.chat_view.setHtml("".join(html) or
-                               "<div style='color:#8FA3BF'>还没聊过，说句话试试～</div>")
+                               f"<div style='color:{theme.MUTED}'>还没聊过，说句话试试～</div>")
         self.chat_view.moveCursor(QTextCursor.End)
         self.mood_badge.setText(f"心情 {memory.mood_label()}")
         self.mood_badge.set_kind("ok" if memory.get_mood() >= 60 else "warn")

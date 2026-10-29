@@ -23,6 +23,17 @@ ACTION_KINDS = ("like", "favorite", "comment", "follow", "tip", "post", "signin"
 ACTION_LABEL = {"like": "点赞", "favorite": "收藏", "comment": "评论",
                 "follow": "关注", "tip": "送葫芦", "post": "发帖", "signin": "签到"}
 
+KIND_COLOR_LIGHT = {
+    "decision": "#B45309",
+    "signin": "#0369A1",
+    "reply": "#047857",
+    "post": "#6D28D9",
+    "genimg": "#BE185D",
+    "chat": "#92400E",
+    "error": "#B91C1C",
+    "system": "#475569",
+}
+
 
 def _title_of(text: str) -> str:
     m = re.search(r"《(.+?)》", text or "")
@@ -115,7 +126,13 @@ class ActivityPage(Page):
                     if not actions and not extra_text:
                         extra_text = text
             plat = PLATFORM_LABEL.get(head.get("platform", ""), "")
-            color = KIND_COLOR.get(head.get("kind", ""), theme.ACCENT)
+            dark = theme.is_dark()
+            if dark:
+                color = KIND_COLOR.get(head.get("kind", ""), theme.ACCENT)
+                chip_bg = "#1B2942"
+            else:
+                color = KIND_COLOR_LIGHT.get(head.get("kind", ""), theme.ACCENT)
+                chip_bg = theme.SEL
             if title:
                 head_line = (f"<span style='color:{theme.TEXT};font-weight:700'>《{title}》</span>")
             else:
@@ -125,7 +142,7 @@ class ActivityPage(Page):
             chips = ""
             if actions:
                 chips = " ".join(
-                    f"<span style='background:#1B2942;color:{color};border-radius:8px;"
+                    f"<span style='background:{chip_bg};color:{color};border-radius:8px;"
                     f"padding:1px 8px;font-size:11px'>{a}</span>" for a in actions)
             comment_html = (f"<div style='color:{theme.TEXT};margin-top:3px'>评论：{comment}</div>"
                             if comment else "")
