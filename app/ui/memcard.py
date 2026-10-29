@@ -25,6 +25,7 @@ class UserMemoryCard(common.Card):
         head.addWidget(common.card_title(title))
         head.addStretch(1)
         head.addWidget(common.button("刷新", ghost=True, on_click=self.reload))
+        head.addWidget(common.button("去他主页看看", ghost=True, on_click=self._visit))
         head.addWidget(common.button("打开目录", ghost=True, on_click=self.open_dir))
         self.box.addLayout(head)
         self.box.addWidget(common.hint(
@@ -117,6 +118,24 @@ class UserMemoryCard(common.Card):
                   f"{len(text)}/{mem_limit('user')} 字</div>")
         self.view.setHtml(header + "<pre style='white-space:pre-wrap'>"
                           + (text or "（空）").replace("<", "&lt;") + "</pre>")
+
+    def _visit(self) -> None:
+        item = self.lst.currentItem()
+        if not item:
+            return
+        uid = int(item.data(Qt.UserRole + 1) or 0)
+        if not uid:
+            return
+        from .common import run_bg
+        from .. import roam
+        self.app.autopilot.log.emit(f"— 去看看 uid={uid} 的主页 —")
+        run_bg(
+            lambda _e: roam.visit_user(self.platform, uid, log=lambda s: None),
+            lambda s: common.toast(
+                self.app,
+                f"看了 {s.get('seen', 0)} 条，动作 {len(s.get('actions') or [])} 个",
+                "ok"),
+            lambda e: common.toast(self.app, f"拜访失败：{e}", "error"))
 
     def open_dir(self) -> None:
         from .settings_page import open_local

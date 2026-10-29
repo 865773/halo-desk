@@ -148,20 +148,24 @@ def _clean_at(text: str) -> str:
 
 
 def filter_lj(records: list[dict], my_uid: int, seen: set[int],
-              since: int = 0) -> list[dict]:
+              since: int = 0, done_keys: set[str] | None = None) -> list[dict]:
     """把灵芥通知整理成待回复列表。
 
     真实类型：comment（评论我帖子）、reply（回复我评论）、at_comment（@我）。
+    同一条评论可能同时产生 reply 和 at_comment 两条通知，按 cid / 内容去重。
     """
     out = []
     cutoff = max(_cutoff(), int(since or 0))
+    done_keys = done_keys or set()
+    seen_cids: set[int] = set()
+    seen_texts: set[str] = set()
     for n in records or []:
         ntype = (n.get("notification_type") or "").lower()
         if ntype not in ("comment", "reply", "at_comment", "at"):
             continue
         cid = _as_int(n.get("cid") or n.get("commentId"))
         tid = _as_int(n.get("themeId") or n.get("tid"))
-        if not cid or not tid or cid in seen:
+        if not cid or not tid or cid in seen or cid in seen_cids:
             continue
         from_uid = _as_int(n.get("author_uid") or n.get("uid"))
         if from_uid and from_uid == my_uid:
@@ -169,12 +173,18 @@ def filter_lj(records: list[dict], my_uid: int, seen: set[int],
         ct = parse_ts(n.get("create_time") or n.get("created_at"))
         if not ct or ct < cutoff:
             continue
+        text = _clean_at(n.get("commentContent") or n.get("content") or "")
+        text_key = f"{tid}:{text}"
+        if text_key in seen_texts or text_key in done_keys:
+            continue
+        seen_cids.add(cid)
+        seen_texts.add(text_key)
         out.append({
-            "cid": cid, "tid": tid,
-            "text": _clean_at(n.get("commentContent") or n.get("content") or ""),
+            "cid": cid, "tid": tid, "text": text,
             "nick": n.get("author_nickname") or f"uid={from_uid}",
             "title": n.get("themeTitle") or "",
             "ct": ct, "uid": from_uid, "kind": ntype,
+            "key": text_key,
         })
     return out
 
@@ -215,6 +225,23 @@ def run_intents(intents: list[str], hlx=None, lj=None, max_steps: int | None = N
             out["roam"] = summary
         except Exception as e:
             out["done"].append(f"逛社区失败：{e}")
+    if "visit" in intents and CFG.get("perm.roam", True) and (
+            CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+        try:
+            from .roam import pick_interesting_user, visit_user
+            platform = "hlx" if CFG.get("hlx.key", "") else "lingjie"
+            if platform == "hlx" and not CFG.get("hlx.key", ""):
+                platform = "lingjie"
+            uid, nick = pick_interesting_user(platform)
+            if uid:
+                s = visit_user(platform, uid, log=lambda _m: None)
+                out["done"].append(f"去 @{nick or uid} 的主页看了帖子"
+                                   f"({len(s.get('actions') or [])} 个动作)")
+                out["visit"] = s
+            else:
+                out["done"].append("还没有想去拜访的人")
+        except Exception as e:
+            out["done"].append(f"拜访主页失败：{e}")
     if "post" in intents and CFG.get("ai.key", ""):
         if post_count >= limit:
             out["done"].append(f"今天已经发了 {post_count} 条，到上限 {limit} 条了")
@@ -507,7 +534,8 @@ class AutoPilot(QObject):
                 if not CFG.get("lingjie.token", ""):
                     return
                 records = self.lj.notifications(1)
-                cands = filter_lj(records, self.lj.uid, set(self.state["lj"]), since)
+                cands = filter_lj(records, self.lj.uid, set(self.state["lj"]), since,
+                                  done_keys=set(self.state.get("lj_keys", [])))
                 warm_key, seen_key = "warm_lj", "lj"
 
             if not self.state.get(warm_key):
@@ -535,6 +563,9 @@ class AutoPilot(QObject):
                     already = False
                 if already:
                     self.state[seen_key].append(c["cid"])
+                    if platform == "lingjie" and c.get("key"):
+                        self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
+                                                 + [c["key"]])[-500:]
                     _save_state(self.state)
                     DBG.log("REPLY", f"已经回过 {c['nick']} 这条了，跳过")
                     continue
@@ -560,6 +591,9 @@ class AutoPilot(QObject):
                 ok, msg = self._send_reply(platform, c, text or "嗯嗯")
                 if ok:
                     self.state[seen_key].append(c["cid"])
+                    if platform == "lingjie" and c.get("key"):
+                        self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
+                                                 + [c["key"]])[-500:]
                     _save_state(self.state)
                     done += 1
                     report["replies"].append((platform, c["nick"], text))

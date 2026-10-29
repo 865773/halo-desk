@@ -368,6 +368,10 @@ def main() -> int:
     hlx4 = FakeHlx()
     tgt = resolve_target("hlx", hlx4, {"kind": "user_first", "uid": 88}, {})
     check("目标解析-某人主页第一个帖子", bool(tgt) and tgt["post_id"] == 777, tgt)
+    from app import capabilities as _cap0
+    from app.config import FILES_DIR as _FD0
+    _cap0._LIKED_CACHE.pop("hlx", None)
+    (_FD0 / "liked_hlx.json").unlink(missing_ok=True)
     res = execute("post_like_favorite_comment", "hlx", hlx4,
                   {"kind": "user_first", "uid": 88},
                   {"content": "翻到你第一条帖子啦", "reason": "对方让我来互动"}, ctx={})
@@ -539,6 +543,42 @@ def main() -> int:
     from app.autopost import make_image_prompt
     ip = make_image_prompt("吃饭", "今天吃了白米饭")
     check("配图带上自定义形象", "红头发" in ip and "日系插画" in ip, ip[:40])
+
+    # ---------- 7.13 重复通知去重 / 点赞一次 / 拜访主页 ----------
+    dup = automation.filter_lj(
+        [{"notification_type": "reply", "cid": "7001", "themeId": "800",
+          "commentContent": "同一条", "author_uid": "60", "author_nickname": "A",
+          "create_time": "刚刚"},
+         {"notification_type": "at_comment", "cid": "7001", "themeId": "800",
+          "commentContent": "同一条", "author_uid": "60", "author_nickname": "A",
+          "create_time": "刚刚"},
+         {"notification_type": "reply", "cid": "7002", "themeId": "800",
+          "commentContent": "同一条", "author_uid": "60", "author_nickname": "A",
+          "create_time": "刚刚"}],
+        2, set(), 0)
+    check("灵芥重复通知只回一次", len(dup) == 1, [c["cid"] for c in dup])
+
+    from app import capabilities as cap
+    from app.config import FILES_DIR as _FD2
+    cap._LIKED_CACHE.pop("hlx", None)
+    (_FD2 / "liked_hlx.json").unlink(missing_ok=True)
+    hl = FakeHlx()
+    execute("post_like", "hlx", hl, {"kind": "current"}, {}, ctx={"post_id": 321})
+    execute("post_like", "hlx", hl, {"kind": "current"}, {}, ctx={"post_id": 321})
+    check("同一个帖子只点赞一次",
+          len([w for w in hl.writes if w[0] == "praise"]) == 1, hl.writes)
+    (_FD2 / "liked_hlx.json").unlink(missing_ok=True)
+    cap._LIKED_CACHE.pop("hlx", None)
+
+    CFG.set("fish.owner_uid_hlx", 0)
+    CFG.set("fish.owner_uid_lingjie", 777)
+    check("灵芥主人也能进葫芦侠提示词", "777" in brain.owner_doc("hlx"),
+          brain.owner_doc("hlx")[:30])
+
+    ljv = FakeLj()
+    vs = roam.visit_user("lingjie", 60, dry_run=False, log=lambda _m: None, client=ljv)
+    check("去别人主页看帖子并互动", bool(vs.get("seen")) and bool(vs.get("actions")),
+          (vs.get("seen"), vs.get("actions")))
 
     # ---------- 7.6 已评论过的帖子不再评论 ----------
     hlx7 = FakeHlx()

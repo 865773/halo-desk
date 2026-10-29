@@ -60,6 +60,10 @@ def owner_doc(platform: str = "") -> str:
     owner = 0
     if platform:
         owner = int(CFG.get(f"fish.owner_uid_{platform}", 0) or 0)
+        if not owner:
+            # 两个社区是同一个主人时，另一个平台填了就沿用
+            other = "lingjie" if platform == "hlx" else "hlx"
+            owner = int(CFG.get(f"fish.owner_uid_{other}", 0) or 0)
     if not owner:
         owner = int(CFG.get("fish.owner_uid", 0) or 0)
     if owner <= 0:
@@ -138,6 +142,7 @@ def intent_prompt() -> str:
         memory_block(),
         "【现在要做决定】又到了你自由活动的时间。你可以：",
         '- "roam"：去逛社区，看帖子、点赞、收藏、评论、关注、送葫芦',
+        '- "visit"：去某个有意思的人主页，翻他的帖子，挑一条自己决定看不看、怎么评论',
         '- "post"：发一条自己的动态/帖子（发帖很有分量，今天还没发够的话优先考虑）',
         '- "signin"：去签到',
         '- "idle"：什么都不做，歇着',

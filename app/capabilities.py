@@ -11,7 +11,7 @@ from typing import Optional
 
 from . import ai, memory
 from .activity import record
-from .config import CFG
+from .config import CFG, FILES_DIR
 from .debuglog import DBG
 from .relations import REL
 
@@ -158,10 +158,58 @@ def resolve_target(platform: str, client, target: dict | None,
 
 
 # ---------- 执行 ----------
+_LIKED_CACHE: dict[str, set] = {}
+
+
+def _liked_file(platform: str):
+    return FILES_DIR / f"liked_{platform}.json"
+
+
+def _liked_set(platform: str) -> set:
+    if platform in _LIKED_CACHE:
+        return _LIKED_CACHE[platform]
+    data = set()
+    try:
+        p = _liked_file(platform)
+        if p.exists():
+            raw = json.loads(p.read_text("utf-8"))
+            if isinstance(raw, list):
+                data = {int(x) for x in raw}
+    except Exception:
+        data = set()
+    _LIKED_CACHE[platform] = data
+    return data
+
+
+def _mark_liked(platform: str, pid: int) -> None:
+    data = _liked_set(platform)
+    data.add(int(pid))
+    try:
+        p = _liked_file(platform)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(sorted(data)[-3000:]), "utf-8")
+    except Exception:
+        pass
+
+
 def _do_like(platform, client, pid) -> bool:
+    """点过就不再点（灵芥的接口是切换式的，重复点会取关/取消）。"""
+    pid = int(pid)
+    if pid in _liked_set(platform):
+        return False
     if platform == "hlx":
-        return (not client.is_praised(pid)) and client.praise(pid)
-    return client.like(pid)
+        if client.is_praised(pid):
+            _mark_liked(platform, pid)
+            return False
+        ok = client.praise(pid)
+    else:
+        if getattr(client, "is_liked", None) and client.is_liked(pid):
+            _mark_liked(platform, pid)
+            return False
+        ok = client.like(pid)
+    if ok:
+        _mark_liked(platform, pid)
+    return ok
 
 
 def _do_favorite(platform, client, pid) -> bool:
@@ -307,12 +355,14 @@ def execute(action: str, platform: str, client, target: dict | None,
             record("like", f"点赞《{title}》", platform, pid=pid,
                    uid=tgt.get("author_uid"), reason=reason)
             REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
+            time.sleep(random.uniform(0.8, 1.8))
     if "favorite" in bits:
         if _do_favorite(platform, client, pid):
             done.append("收藏")
             record("favorite", f"收藏《{title}》", platform, pid=pid,
                    uid=tgt.get("author_uid"), reason=reason)
             REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
+            time.sleep(random.uniform(0.8, 1.8))
     if "comment" in bits:
         try:
             if client.has_my_comment(pid):

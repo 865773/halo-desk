@@ -40,6 +40,16 @@ class Relations:
                     self.data = raw
         except Exception:
             self.data = {}
+        # 旧版灵芥用的是 "lj" 键，迁到 "lingjie"
+        legacy = self.data.pop("lj", None)
+        if isinstance(legacy, dict) and legacy:
+            cur = self.data.get("lingjie")
+            if not isinstance(cur, dict):
+                cur = {}
+            for k, v in legacy.items():
+                cur.setdefault(k, v)
+            self.data["lingjie"] = cur
+            self._save()
 
     def _save(self) -> None:
         try:

@@ -336,3 +336,83 @@ def roam_once(client, max_steps: int = 3, dry_run: bool = False, log=print,
                     why_s, {"switch": "stay"}, log)
         time.sleep(random.uniform(1.5, 4.0))
     return summary
+
+
+def pick_interesting_user(platform: str) -> tuple[int, str]:
+    """从好感度/互动记录里挑一个“有意思的人”。"""
+    try:
+        rows = REL.top(platform, 20)
+    except Exception:
+        rows = []
+    owner = int(CFG.get(f"fish.owner_uid_{platform}", 0)
+                or CFG.get("fish.owner_uid", 0) or 0)
+    me = 0
+    try:
+        from .names import get as _name_of  # noqa: F401
+    except Exception:
+        pass
+    cands = [(uid, nick, favor) for uid, nick, favor in rows
+             if uid and uid != owner]
+    if not cands:
+        return 0, ""
+    cands.sort(key=lambda x: x[2], reverse=True)
+    uid, nick, _favor = cands[0]
+    return uid, nick
+
+
+def visit_user(platform: str, uid: int = 0, dry_run: bool = False, log=print,
+               client=None) -> dict:
+    """去某人的主页看帖子，由大肥鱼自己决定看哪个、做什么、怎么评论。"""
+    from . import names
+    client = client or (HlxClient(CFG) if platform == "hlx" else LingjieClient(CFG))
+    summary = {"platform": platform, "uid": uid, "seen": 0, "actions": [],
+               "errors": [], "decisions": [], "titles": []}
+    if not uid:
+        uid, nick = pick_interesting_user(platform)
+        if not uid:
+            summary["errors"].append("还没有值得拜访的人")
+            return summary
+    else:
+        nick = names.get(platform, uid)
+    if not nick:
+        try:
+            d = client.user_info(uid) if platform == "hlx" else \
+                (client._get("/user/info", f"uid={uid}") or {}).get("data") or {}
+            nick = (d or {}).get("nick") or (d or {}).get("nickname") or f"uid={uid}"
+        except Exception:
+            nick = f"uid={uid}"
+    names.set_name(platform, uid, nick)
+    _record(summary, platform, f"去 @{nick} 的主页看看" + ("（试运行）" if dry_run else ""),
+            "对这个人有点好奇", {"visit_uid": uid}, log)
+
+    posts = _posts_of(client, platform, uid)
+    if not posts:
+        summary["errors"].append("他主页没有帖子")
+        return summary
+    if len(posts) > 1:
+        try:
+            pick = brain._choose(  # noqa: SLF001
+                f"你在 @{nick} 的主页，看到他发的这些帖子：",
+                [p.get("title", "")[:20] or "无标题" for p in posts[:6]],
+                posts[0].get("title", "") or "无标题")
+            for p in posts[:6]:
+                if (p.get("title", "") or "无标题").startswith(pick[:6]):
+                    posts = [p] + [x for x in posts if x is not p]
+                    break
+        except Exception:
+            pass
+    seen = _load_ids(_seen_path(platform))
+    commented = _load_ids(_commented_path(platform))
+    for p in posts[:1]:
+        post = dict(p)
+        post["_cat_id"] = 0
+        _process(client, platform, post, 0, f"@{nick} 的主页", summary,
+                 seen, commented, dry_run, log)
+        summary["titles"].append(post.get("title", ""))
+        if dry_run:
+            break
+    if summary["actions"]:
+        memory.remember(f"去 @{nick} 的主页看了帖子，做了 "
+                        f"{len(summary['actions'])} 个动作")
+        REL.add(platform, uid, 1, nick)
+    return summary

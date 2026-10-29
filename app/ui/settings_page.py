@@ -154,10 +154,13 @@ class SettingsPage(Page):
         b3.clicked.connect(lambda: open_local(str(DBG.path)) or open_local(str(DBG.path.parent)))
         b4 = common.button("清除去重记录", ghost=True)
         b4.clicked.connect(self.clear_dedupe)
+        b5 = common.button("导出数据备份", ghost=True)
+        b5.clicked.connect(self.export_backup)
         row.addWidget(b1)
         row.addWidget(b2)
         row.addWidget(b3)
         row.addWidget(b4)
+        row.addWidget(b5)
         row.addStretch(1)
         data.box.addLayout(row)
         self.body.addWidget(data)
@@ -190,6 +193,29 @@ class SettingsPage(Page):
             common.toast(self.app, "已更新开机启动设置", "ok")
         else:
             common.toast(self.app, "设置失败（可能被安全软件拦截）", "err")
+
+    def export_backup(self) -> None:
+        """把 data 目录打包到桌面，换机或备份用。"""
+        import shutil
+        import time
+        from pathlib import Path
+        from PySide6.QtCore import QStandardPaths
+        root = data_dir()
+        desk = QStandardPaths.writableLocation(QStandardPaths.DesktopLocation) or str(Path.home())
+        out = Path(desk) / f"HaloDesk-backup-{time.strftime('%Y%m%d-%H%M')}.zip"
+        common.toast(self.app, "正在打包…", "info")
+
+        def work(_e):
+            return shutil.make_archive(str(out.with_suffix("")), "zip", str(root))
+
+        def done(path):
+            common.toast(self.app, f"已导出：{path}", "ok")
+            open_local(str(Path(path).parent))
+
+        def fail(e):
+            common.toast(self.app, f"导出失败：{e}", "error")
+
+        common.run_bg(work, done, fail)
 
     def clear_dedupe(self) -> None:
         """清掉「已评论/已回复」记录（评论卡在审核时可以用它重试）。"""
