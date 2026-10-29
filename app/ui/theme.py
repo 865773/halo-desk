@@ -4,9 +4,9 @@ from __future__ import annotations
 from ..config import CFG
 
 LIGHT = {
-    "BG": "#F5F7FB", "BG2": "#FFFFFF", "CARD": "#FFFFFF", "CARD2": "#F1F4F9",
-    "LINE": "#E2E8F0", "TEXT": "#1F2937", "MUTED": "#6B7280",
-    "ACCENT": "#2563EB", "ACCENT2": "#3B82F6", "OK": "#059669",
+    "BG": "#F6F8FB", "BG2": "#FFFFFF", "CARD": "#FFFFFF", "CARD2": "#F2F5FA",
+    "LINE": "#E5EAF2", "TEXT": "#1F2937", "MUTED": "#6B7280",
+    "ACCENT": "#2F6BFF", "ACCENT2": "#4F86FF", "OK": "#059669",
     "WARN": "#D97706", "ERR": "#DC2626",
     "FIELD": "#F8FAFC", "HOVER": "#EFF3F9", "NAV_HOVER": "#F1F5F9",
     "NAV_ACTIVE": "#E8F0FE", "SEL": "#DBEAFE", "SCROLL": "#CBD5E1",
@@ -73,7 +73,8 @@ QPushButton:pressed {{ background: {p['BTN_PRESS']}; }}
 QPushButton:disabled {{ color: {p['DISABLED']}; background: {p['CARD2']}; }}
 
 QPushButton#primary {{
-    background: {p['ACCENT']};
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 {p['ACCENT']}, stop:1 {p['ACCENT2']});
     border: 1px solid {p['ACCENT']};
     color: #FFFFFF;
     font-weight: 700;
@@ -97,6 +98,9 @@ QPushButton#nav:checked {{
     color: {p['ACCENT']};
     font-weight: 700;
     padding-left: 14px;
+    border-left: 3px solid {p['ACCENT']};
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
 }}
 
 QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox,

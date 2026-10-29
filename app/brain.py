@@ -101,9 +101,11 @@ def memory_block(uid: int = 0, platform: str = "") -> str:
     return "\n".join(sb)
 
 
-def mood_context() -> str:
-    v = memory.get_mood()
-    return f"【你现在的心情】{memory.mood_label(v)}（{v}/100），语气要受它影响。\n"
+def mood_context(platform: str = "") -> str:
+    v = memory.get_mood(platform)
+    return (f"【你现在的心情】{memory.mood_label(v, platform)}（{v}/100）。\n"
+            "心情会直接决定你做什么：心情好就多互动、语气黏一点；"
+            "心情一般就少说话；心情不好就别硬凑，可以什么都不做。\n")
 
 
 def favor_context(platform: str, uid: int, nick: str = "") -> str:
@@ -123,7 +125,7 @@ def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool 
     parts = [persona,
              f"【你叫】{name}，标签：{tags}",
              f"【你现在的平台】{where}",
-             mood_context(),
+             mood_context(platform),
              owner_doc(platform),
              emoji.doc(platform),
              currency_doc(platform),
@@ -143,7 +145,7 @@ def intent_prompt() -> str:
     persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
     return "\n".join([
         persona,
-        mood_context(),
+        mood_context(platform),
         owner_doc(),
         memory_block(),
         "【现在要做决定】又到了你自由活动的时间。你可以：",
@@ -175,8 +177,8 @@ def decide(platform: str, state: str, uid: int = 0, nick: str = "",
            images: Optional[list[str]] = None) -> dict:
     """看帖时的决策：从动作清单里选一个 action。"""
     sys = system_prompt(platform, uid, nick)
-    ask = (state + "\n\n从动作清单里选一个 action（看当前帖就用 target.kind=current），"
-           "并给出 reason。只输出一行 JSON。")
+    ask = (state + "\n\n结合你现在的心情，从动作清单里选一个 action"
+           "（看当前帖就用 target.kind=current），并给出 reason。只输出一行 JSON。")
     for _ in range(3):
         try:
             if images and _perm("vision", True) and _ < 2:
@@ -226,7 +228,7 @@ def random_reply_gap() -> float:
 
 def _choose(prompt: str, options: list[str], default: str) -> tuple[str, str]:
     from .net import json_of
-    sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context()
+    sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context(platform)
     ask = (prompt + "\n可选：" + " / ".join(options) +
            '\n只输出一行 JSON：{"choice":"上面某一个选项","reason":"为什么这么选（一句话）"}')
     for _ in range(2):

@@ -27,15 +27,15 @@ from .settings_page import SettingsPage
 from .memory_page import MemoryPage
 
 NAVS = [
-    ("home", "总览"),
-    ("hlx", "葫芦侠三楼"),
-    ("lingjie", "灵芥空间"),
-    ("fish", "大肥鱼"),
-    ("memory", "记忆"),
-    ("activity", "动态"),
-    ("auto", "自动任务"),
-    ("debug", "调试"),
-    ("settings", "设置"),
+    ("home", "⌂  总览"),
+    ("hlx", "▣  葫芦侠三楼"),
+    ("lingjie", "◈  灵芥空间"),
+    ("fish", "✿  大肥鱼"),
+    ("memory", "❏  记忆"),
+    ("activity", "≡  动态"),
+    ("auto", "⚙  自动任务"),
+    ("debug", "⌘  调试"),
+    ("settings", "☰  设置"),
 ]
 
 
@@ -138,6 +138,7 @@ class MainWindow(QMainWindow):
         self._build_tray()
         self.autopilot.replied.connect(self._on_pet_reply)
         self.show_page(CFG.get("general.page", "home") or "home")
+        self._refresh_sidebar_status()
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
         QTimer.singleShot(2600, self._validate_logins)
@@ -185,7 +186,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v6.0 · 桌面合并版")
+        ver = QLabel("v6.1 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -242,6 +243,18 @@ class MainWindow(QMainWindow):
             pass
         self._refresh_sidebar_status()
         self.pages["home"].refresh()
+        try:
+            from ..activity import ACT
+            ACT.reload()
+        except Exception:
+            pass
+        for key in ("hlx", "lingjie"):
+            pg = self.pages.get(key)
+            if pg is not None and getattr(pg, "user_mem", None) is not None:
+                pg.user_mem.reload()
+        cur = self.stack.currentWidget()
+        if hasattr(cur, "refresh") and cur is not self.pages["home"]:
+            cur.refresh()
 
     def _refresh_sidebar_status(self) -> None:
         hlx = "葫芦侠 已登录" if CFG.get("hlx.key", "") else "葫芦侠 未登录"

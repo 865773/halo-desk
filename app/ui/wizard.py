@@ -1,4 +1,4 @@
-"""首次配置向导：账号、AI、文生图、角色、行为，一次配完。"""
+"""配置向导：分步完成账号、AI、文生图、角色、行为。"""
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -9,37 +9,51 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFormLayout,
 from ..config import CFG, DEFAULTS
 from . import common
 
+ALIYUN_IMG_URL = ("https://dashscope.aliyuncs.com/api/v1/services/aigc/"
+                  "multimodal-generation/generation")
+
 
 class Wizard(QDialog):
     def __init__(self, app):
         super().__init__(app)
         self.app = app
+        self.step = 0
+        self.ai_ok = False
         self.setWindowTitle("大肥鱼配置向导")
-        self.resize(820, 680)
+        self.resize(840, 700)
         lay = QVBoxLayout(self)
-        title = QLabel("一次把账号、AI、形象、行为配好，然后启用")
-        title.setStyleSheet("font-size:17px;font-weight:700;")
-        lay.addWidget(title)
 
-        tabs = QTabWidget()
-        tabs.addTab(self._accounts(), "1 账号")
-        tabs.addTab(self._ai(), "2 AI")
-        tabs.addTab(self._image(), "3 文生图")
-        tabs.addTab(self._role(), "4 角色")
-        tabs.addTab(self._behaviour(), "5 行为")
-        lay.addWidget(tabs, 1)
+        self.title = QLabel("")
+        self.title.setStyleSheet("font-size:17px;font-weight:700;")
+        lay.addWidget(self.title)
+
+        self.tabs = QTabWidget()
+        self.tabs.tabBar().hide()
+        self.tabs.addTab(self._accounts(), "1 账号")
+        self.tabs.addTab(self._ai(), "2 AI")
+        self.tabs.addTab(self._image(), "3 文生图")
+        self.tabs.addTab(self._role(), "4 角色")
+        self.tabs.addTab(self._behaviour(), "5 行为")
+        lay.addWidget(self.tabs, 1)
 
         self.hint = QLabel("")
         self.hint.setObjectName("muted")
         lay.addWidget(self.hint)
 
         row = QHBoxLayout()
-        row.addStretch(1)
         row.addWidget(common.button("稍后再说", ghost=True, on_click=self._later))
-        row.addWidget(common.button("保存", ghost=True, on_click=self._save_only))
-        row.addWidget(common.button("保存并启用", primary=True, on_click=self._finish))
+        row.addStretch(1)
+        self.back_btn = common.button("上一步", ghost=True, on_click=self._back)
+        self.next_btn = common.button("下一步", primary=True, on_click=self._next)
+        self.finish_btn = common.button("完成并启用", primary=True,
+                                        on_click=self._finish)
+        row.addWidget(self.back_btn)
+        row.addWidget(self.next_btn)
+        row.addWidget(self.finish_btn)
         lay.addLayout(row)
+
         self._load()
+        self._sync()
 
     # ---------- 页面 ----------
     def _accounts(self) -> QWidget:
@@ -47,8 +61,8 @@ class Wizard(QDialog):
         f = QFormLayout(w)
         self.hlx_state = QLabel("—")
         self.lj_state = QLabel("—")
-        f.addRow("葫芦侠状态", self.hlx_state)
-        f.addRow("灵芥状态", self.lj_state)
+        f.addRow("葫芦侠", self.hlx_state)
+        f.addRow("灵芥", self.lj_state)
         self.hlx_user = QLineEdit()
         self.hlx_user.setPlaceholderText("葫芦侠账号 / 手机号")
         self.hlx_pwd = QLineEdit()
@@ -59,25 +73,24 @@ class Wizard(QDialog):
         self.lj_pwd = QLineEdit()
         self.lj_pwd.setEchoMode(QLineEdit.Password)
         self.lj_pwd.setPlaceholderText("密码")
-        f.addRow("葫芦侠登录", self.hlx_user)
-        f.addRow("", self.hlx_pwd)
-        f.addRow("", common.button("登录葫芦侠", primary=True,
-                                   on_click=lambda: self._login("hlx")))
-        f.addRow("灵芥登录", self.lj_user)
-        f.addRow("", self.lj_pwd)
-        f.addRow("", common.button("登录灵芥", primary=True,
-                                   on_click=lambda: self._login("lingjie")))
-        f.addRow("", QLabel("只登录一个平台也可以；另一个留空即可。"))
+        f.addRow(self.hlx_user)
+        f.addRow(self.hlx_pwd)
+        f.addRow(common.button("登录葫芦侠", primary=True,
+                               on_click=lambda: self._login("hlx")))
+        f.addRow(self.lj_user)
+        f.addRow(self.lj_pwd)
+        f.addRow(common.button("登录灵芥", primary=True,
+                               on_click=lambda: self._login("lingjie")))
+        f.addRow("", QLabel("只登录一个平台也可以；另一个留空。"))
         self.owner_hlx = QLineEdit()
         self.owner_lj = QLineEdit()
         get_btn = common.button("从粉丝获取", ghost=True,
                                 on_click=self._owner_from_fans)
-        row = QHBoxLayout()
-        row.addWidget(self.owner_hlx, 1)
-        row.addWidget(get_btn)
-        f.addRow("葫芦侠主人 uid", row)
+        r = QHBoxLayout()
+        r.addWidget(self.owner_hlx, 1)
+        r.addWidget(get_btn)
+        f.addRow("葫芦侠主人 uid", r)
         f.addRow("灵芥主人 uid", self.owner_lj)
-        f.addRow("", QLabel("两个社区是同一个主人时，只填一个会自动沿用。"))
         return w
 
     def _ai(self) -> QWidget:
@@ -85,15 +98,19 @@ class Wizard(QDialog):
         f = QFormLayout(w)
         self.ai_key = QLineEdit()
         self.ai_key.setEchoMode(QLineEdit.Password)
-        self.ai_model = QLineEdit()
-        self.ai_vision = QLineEdit()
+        self.ai_key.setPlaceholderText("sk-...")
         f.addRow("API Key", self.ai_key)
-        f.addRow("日常对话模型", self.ai_model)
-        f.addRow("看图模型", self.ai_vision)
+        test = common.button("测试 Key 是否可用", on_click=self._test_ai)
+        self.ai_state = QLabel("未测试")
+        self.ai_state.setObjectName("muted")
+        r = QHBoxLayout()
+        r.addWidget(test)
+        r.addWidget(self.ai_state, 1)
+        f.addRow("", r)
         f.addRow("", QLabel(
-            "1）打开 platform.deepseek.com，注册后在「API Keys」创建 Key；\n"
-            "2）日常用 deepseek-chat 这种便宜模型即可；\n"
-            "3）看图时自动换「看图模型」，留空则用日常模型；\n"
+            "1）打开 platform.deepseek.com 注册，进「API Keys」创建；\n"
+            "2）把 Key 粘到上面，点「测试」；测试通过才能下一步；\n"
+            "3）日常文字用 deepseek-chat，需要看图时自动换能看图的模型；\n"
             "4）Key 不填，大肥鱼不会说话。"))
         return w
 
@@ -107,9 +124,8 @@ class Wizard(QDialog):
         self.img_key.setEchoMode(QLineEdit.Password)
         self.img_model = QLineEdit()
         self.img_models = QLineEdit()
-        preset = common.button("一键填入阿里云（百炼）", primary=True,
-                               on_click=self._fill_aliyun)
-        f.addRow("", preset)
+        f.addRow("", common.button("一键填入阿里云（百炼）", primary=True,
+                                   on_click=self._fill_aliyun))
         f.addRow("协议", self.img_proto)
         f.addRow("接口地址", self.img_url)
         f.addRow("Key", self.img_key)
@@ -117,11 +133,10 @@ class Wizard(QDialog):
         f.addRow("备用模型", self.img_models)
         f.addRow("", QLabel(
             "阿里云教程：\n"
-            "1）打开 bailian.console.aliyun.com，登录后开通「百炼」；\n"
+            "1）打开 bailian.console.aliyun.com，开通「百炼」；\n"
             "2）右上角「API-KEY」→ 创建，复制 sk- 开头的 Key；\n"
-            "3）把 Key 填到上面，接口地址留空即可；\n"
-            "4）模型默认 wan2.6-t2i，额度用完自动换备用。\n"
-            "不配也能用，只是发帖不带图。"))
+            "3）点「一键填入阿里云」会把地址和模型都填好，只需贴 Key；\n"
+            "4）模型额度用完会自动换备用。不配也能用，只是不带图。"))
         return w
 
     def _role(self) -> QWidget:
@@ -137,7 +152,6 @@ class Wizard(QDialog):
         f.addRow("标签", self.tags_edit)
         f.addRow("形象（配图）", self.appear_edit)
         f.addRow("人设（说话风格）", self.persona_edit)
-        f.addRow("", QLabel("形象会原样写进文生图提示词；人设留空用默认。"))
         return w
 
     def _behaviour(self) -> QWidget:
@@ -181,12 +195,10 @@ class Wizard(QDialog):
         self.owner_hlx.setText(str(cfg.get("fish.owner_uid_hlx", 0) or ""))
         self.owner_lj.setText(str(cfg.get("fish.owner_uid_lingjie", 0) or ""))
         self.ai_key.setText(cfg.get("ai.key", ""))
-        self.ai_model.setText(cfg.get("ai.model_basic", "") or DEFAULTS["ai"]["model_basic"])
-        self.ai_vision.setText(cfg.get("ai.model_vision", "") or cfg.get("ai.model_basic", ""))
         self.img_proto.setCurrentText(cfg.get("fish.img_proto", "dashscope"))
-        self.img_url.setText(cfg.get("fish.img_url", ""))
+        self.img_url.setText(cfg.get("fish.img_url", "") or ALIYUN_IMG_URL)
         self.img_key.setText(cfg.get("fish.img_key", ""))
-        self.img_model.setText(cfg.get("fish.img_model", ""))
+        self.img_model.setText(cfg.get("fish.img_model", "") or "wan2.6-t2i")
         self.img_models.setText(cfg.get("fish.img_models", ""))
         self.name_edit.setText(cfg.get("fish.name", "大肥鱼"))
         self.tags_edit.setText(cfg.get("fish.tags", ""))
@@ -199,14 +211,14 @@ class Wizard(QDialog):
         self.max_reply.setValue(int(cfg.get("auto.max_per_pass", 3) or 3))
         for k, cb in self.perm_boxes.items():
             cb.setChecked(bool(cfg.get(f"perm.{k}", k != "tip")))
+        if cfg.get("ai.key"):
+            self.ai_state.setText("已填写，建议测试一次")
 
     def _save(self) -> None:
         cfg = CFG
         cfg.set("fish.owner_uid_hlx", int(self.owner_hlx.text() or 0))
         cfg.set("fish.owner_uid_lingjie", int(self.owner_lj.text() or 0))
         cfg.set("ai.key", self.ai_key.text().strip())
-        cfg.set("ai.model_basic", self.ai_model.text().strip())
-        cfg.set("ai.model_vision", self.ai_vision.text().strip())
         cfg.set("fish.img_proto", self.img_proto.currentText())
         cfg.set("fish.img_url", self.img_url.text().strip())
         cfg.set("fish.img_key", self.img_key.text().strip())
@@ -226,10 +238,89 @@ class Wizard(QDialog):
         cfg.save()
         self.app.pages["home"].refresh()
 
+    # ---------- 步骤 ----------
+    def _sync(self) -> None:
+        titles = ["1 / 5　登录账号", "2 / 5　AI 配置", "3 / 5　文生图（可选）",
+                  "4 / 5　角色", "5 / 5　行为"]
+        self.title.setText(titles[self.step])
+        self.back_btn.setVisible(self.step > 0)
+        self.next_btn.setVisible(self.step < 4)
+        self.finish_btn.setVisible(self.step == 4)
+        if self.step == 4:
+            ok = self._ready()
+            self.finish_btn.setEnabled(ok)
+            self.hint.setText("" if ok else "还差：" + "、".join(self._missing()))
+        else:
+            self.hint.setText("")
+
+    def _logged(self) -> list[str]:
+        out = []
+        if CFG.get("hlx.key", ""):
+            out.append("葫芦侠")
+        if CFG.get("lingjie.token", ""):
+            out.append("灵芥")
+        return out
+
+    def _missing(self) -> list[str]:
+        miss = []
+        if not self._logged():
+            miss.append("至少登录一个平台")
+        if not self.ai_ok and not CFG.get("ai.key", ""):
+            miss.append("AI Key")
+        elif not self.ai_ok:
+            miss.append("AI Key 未测试通过")
+        return miss
+
+    def _ready(self) -> bool:
+        return not self._missing()
+
+    def _next(self) -> None:
+        if self.step == 0 and not self._logged():
+            common.toast(self.app, "先登录至少一个平台", "warn")
+            return
+        if self.step == 1 and not self.ai_ok:
+            common.toast(self.app, "先点「测试 Key」并通过", "warn")
+            return
+        self._save()
+        self.step = min(4, self.step + 1)
+        self.tabs.setCurrentIndex(self.step)
+        self._sync()
+
+    def _back(self) -> None:
+        self.step = max(0, self.step - 1)
+        self.tabs.setCurrentIndex(self.step)
+        self._sync()
+
     # ---------- 动作 ----------
+    def _test_ai(self) -> None:
+        key = self.ai_key.text().strip()
+        if not key:
+            common.toast(self.app, "先填 Key", "warn")
+            return
+        CFG.set("ai.key", key)
+        CFG.save()
+        self.ai_state.setText("测试中…")
+        from .common import run_bg
+
+        def work(_e):
+            from .. import ai
+            return ai.ask("只回复两个字：可用", "测试", CFG.get("ai.model_basic"))
+
+        def done(_t):
+            self.ai_ok = True
+            self.ai_state.setText("可用 ✔")
+            common.toast(self.app, "Key 可用", "ok")
+
+        def fail(e):
+            self.ai_ok = False
+            self.ai_state.setText("不可用")
+            common.toast(self.app, f"不可用：{e}", "error")
+
+        run_bg(work, done, fail)
+
     def _fill_aliyun(self) -> None:
         self.img_proto.setCurrentText("dashscope")
-        self.img_url.setText("")
+        self.img_url.setText(ALIYUN_IMG_URL)
         self.img_model.setText("wan2.6-t2i")
         self.img_models.setText("wan2.5-t2i-preview,wanx2.1-t2i-turbo")
 
@@ -245,7 +336,7 @@ class Wizard(QDialog):
 
         def work(_e):
             if platform == "hlx":
-                self.app.hlx.login(user, pwd)   # 成功会自己写 config，失败抛异常
+                self.app.hlx.login(user, pwd)
             else:
                 self.app.lj.login_password(user, pwd)
                 info = self.app.lj.me()
@@ -258,6 +349,7 @@ class Wizard(QDialog):
         def done(_ok):
             common.toast(self.app, "登录成功", "ok")
             self._load()
+            self._sync()
             self.app.notify_accounts()
 
         def fail(e):
@@ -276,39 +368,25 @@ class Wizard(QDialog):
 
         def done(fans):
             if not fans:
-                common.toast(self.app, "没有拿到粉丝列表", "warn")
+                common.toast(self.app, "没拿到粉丝列表", "warn")
                 return
-            first = fans[0]
-            u = first.get("user") or first
+            u = fans[0].get("user") or fans[0]
             uid = int(u.get("userID", 0) or 0)
-            nick = u.get("nick", "")
             if uid:
                 self.owner_hlx.setText(str(uid))
-                common.toast(self.app, f"已填入 {nick or uid}，可手动改", "ok")
+                common.toast(self.app, f"已填入 {u.get('nick') or uid}", "ok")
 
         run_bg(work, done, lambda e: common.toast(self.app, f"获取失败：{e}", "error"))
-
-    def _go(self, platform: str) -> None:
-        self.app.show_page(platform)
-        self.accept()
 
     def _later(self) -> None:
         CFG.set("general.first_run", False)
         CFG.save()
         self.accept()
 
-    def _save_only(self) -> None:
-        self._save()
-        common.toast(self.app, "已保存", "ok")
-        self.accept()
-
     def _finish(self) -> None:
         self._save()
-        home = self.app.pages.get("home")
-        miss = home.missing_items() if home else []
-        if miss:
-            self.hint.setText("还差：" + "、".join(miss))
-            common.toast(self.app, "还差：" + "、".join(miss), "warn")
+        if not self._ready():
+            self.hint.setText("还差：" + "、".join(self._missing()))
             return
         CFG.set("fish.enabled", True)
         CFG.save()

@@ -101,9 +101,9 @@ DEFAULTS: dict = {
     "ai": {
         "key": "",
         "base": "https://api.deepseek.com",
-        "model_basic": "deepseek-flash",
-        "model_smart": "deepseek-v4-pro",
-        "model_vision": "deepseek-flash",
+        "model_basic": "deepseek-chat",
+        "model_smart": "deepseek-reasoner",
+        "model_vision": "deepseek-chat",
     },
     "fish": {
         "enabled": False,
@@ -135,7 +135,8 @@ DEFAULTS: dict = {
         "mood": 60,
         "chat_scope": "hlx",
         "img_proto": "dashscope",
-        "img_url": "",
+        "img_url": ("https://dashscope.aliyuncs.com/api/v1/services/aigc/"
+                    "multimodal-generation/generation"),
         "img_key": "",
         "img_model": "wan2.6-t2i",
         "img_models": "wan2.5-t2i-preview,wanx2.1-t2i-turbo",
