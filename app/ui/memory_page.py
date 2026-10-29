@@ -53,15 +53,17 @@ class MemoryPage(Page):
         self.which.clear()
         self.paths = {}
 
-        def add(label: str, path):
-            if path is None or not os.path.exists(path):
+        def add(label: str, path, allow_missing: bool = False):
+            if path is None:
+                return
+            if not os.path.exists(path) and not allow_missing:
                 return
             name = f"{label}（{os.path.basename(str(path))}）"
             self.paths[name] = str(path)
             self.which.addItem(name)
 
-        add("通用记忆", memory.MEMORY_FILE)
-        add("生活记忆", memory.LIFE_FILE)
+        add("通用记忆", memory.MEMORY_FILE, allow_missing=True)
+        add("生活记忆", memory.LIFE_FILE, allow_missing=True)
         # 用户记忆放到各自社区页里，这里只留通用/生活
 
         if cur in self.paths:
@@ -87,8 +89,12 @@ class MemoryPage(Page):
             return
         try:
             text = open(path, encoding="utf-8").read()
-        except Exception as e:
-            text = f"读取失败：{e}"
+        except Exception:
+            text = ""
+        if not text:
+            text = ("还没有生活记录。大肥鱼每 6 小时会写一次，"
+                    "也可以去「自动任务」里手动触发。" if kind == "life"
+                    else "还没有记忆。多用用大肥鱼，它会慢慢记住事情。")
         self.view.setPlainText(text or "（空）")
         limit = memory.mem_limit(kind)
         n = len(text)
