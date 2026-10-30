@@ -553,23 +553,28 @@ def main() -> int:
           and bool(htips[0][1]["text"].strip())
           and 1 <= htips[0][1]["score"] <= 1,
           htips)
+    check("葫芦侠打赏对象使用对方自己的帖子",
+          bool(htips) and htips[0][1]["pid"] == 777, htips)
 
     ht2 = FakeHlx()
     rc = execute("tip_post", "hlx", ht2, {"kind": "current", "uid": 60},
                  {"reason": "回复打赏", "score": 1},
                  ctx={"post_id": 123, "comment_id": 456, "title": "测试帖"})
     ctips = [w for w in ht2.writes if w[0] == "tip_comment"]
-    check("葫芦侠回复场景会打赏评论而不是帖子",
-          bool(rc.get("done")) and bool(ctips), ctips)
+    reply_tips = [w for w in ht2.writes if w[0] == "tip"]
+    check("葫芦侠回复场景改为打赏对方帖子，不再用评论接口",
+          bool(rc.get("done")) and not ctips
+          and reply_tips and reply_tips[0][1]["pid"] == 777,
+          ht2.writes)
 
     ht3 = FakeHlx()
     rs = execute("tip_post", "hlx", ht3, {"kind": "current", "uid": 60},
                  {"reason": "楼层打赏", "score": 1},
                  ctx={"post_id": 123, "comment_id": 456, "comment_seq": 42,
                       "title": "测试帖"})
-    stips = [w for w in ht3.writes if w[0] == "tip_comment"]
-    check("葫芦侠打赏评论使用全局 commentID",
-          bool(rs.get("done")) and bool(stips) and stips[0][1]["cid"] == 456,
+    stips = [w for w in ht3.writes if w[0] == "tip"]
+    check("葫芦侠带 seq 时也打赏对方帖子",
+          bool(rs.get("done")) and bool(stips) and stips[0][1]["pid"] == 777,
           stips)
 
     # ---------- 7.12 发帖板块锁死 / 形象配图 ----------
