@@ -16,7 +16,7 @@ import time
 import traceback
 from pathlib import Path
 
-ROOT = Path(r"C:\Users\渡渡\Documents\deepseek-harness\default-workspace\halo-desktop")
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # 默认在数据副本上跑，绝不碰用户真实数据；加 --inplace 才用原目录

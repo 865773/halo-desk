@@ -16,6 +16,7 @@ halo-desktop/
 │  ├─ startup.wav             启动页音效
 │  └─ pet/shenshen/           桌宠逐帧动画（idle/happy/shy/angry/drag/eat）
 │
+├─ version.txt               线上版本/公告/强更开关（后台编辑）
 ├─ app/                       业务逻辑（不含界面）
 │  ├─ config.py               配置默认值、data 目录、读写
 │  ├─ paths.py                资源路径（打包/源码兼容）
@@ -80,6 +81,7 @@ halo-desktop/
 │  ├─ HANDOVER.md             架构/流程/踩坑/构建说明
 │  ├─ PROJECT_TREE.md         本文件
 │  ├─ PROMO.md                分享文案与口播脚本
+│  ├─ ADMIN_PROMPT.md         后台管理 App 生成提示词
 │  ├─ PROMPTS.md              提示词手册
 │  ├─ prompts.json            机器可读提示词
 │  ├─ CHANGELOG.md            版本变更

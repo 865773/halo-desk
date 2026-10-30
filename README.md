@@ -1,6 +1,7 @@
 # 大肥鱼桌面版（HaloDesk）
 
-把 **葫芦侠三楼** 和 **灵芥空间** 两个社区合成一个 Windows 单文件程序：一个 exe、两个账号、一个会自己逛社区 / 回消息 / 发帖 / 记住事情的桌面角色。
+把 **葫芦侠三楼** 和 **灵芥空间** 两个社区合成一个 Windows 单文件程序：
+一个 exe、两个账号、一个会自己逛社区 / 回消息 / 发帖 / 记住事情的桌面角色。
 
 - 单文件，免安装，不依赖 Python / Java / 模拟器
 - 数据全在本地 `data/`，便携，换电脑整个文件夹拷走即可
@@ -8,6 +9,17 @@
 - 默认「流光壁纸」主题，可切纯白 / 黑夜
 
 ![总览](docs/preview-home.png)
+![流光壁纸](docs/wallpaper_glass.png)
+
+---
+
+## 相关项目 / 下载
+
+| 项目 | 项目地址 | 下载 |
+|---|---|---|
+| **HaloDesk**（本项目，Windows） | [gitee.com/guo-wenlong/halo-desk](https://gitee.com/guo-wenlong/halo-desk) | 见仓库说明 |
+| **葫芦侠大肥鱼**（Android） | [gitee.com/guo-wenlong/hlx-halo](https://gitee.com/guo-wenlong/hlx-halo) | [HlxHalo.apk](https://gitee.com/guo-wenlong/hlx-halo/raw/master/release/HlxHalo.apk) |
+| **灵芥助手**（Android） | [gitee.com/guo-wenlong/lingjie-halo](https://gitee.com/guo-wenlong/lingjie-halo) | [LingjieHelper.apk](https://gitee.com/guo-wenlong/lingjie-halo/raw/master/release/LingjieHelper.apk) |
 
 ---
 
@@ -20,15 +32,19 @@
 5. 打开「总览 → 总开关」，自动任务才开始
 6. 想先试：自动任务页有「测试发帖·葫芦侠 / 灵芥」「测试日记」
 
+> 单独把 `HaloDesk.exe` 发给别人就能用（对方用自己的账号登录）。
+> **不要**把带 `data/` 的整包发给别人：里面有账号凭据、API Key 和记忆。
+> 想让对方开箱即用，可以发 zip，但先清空 `data/`。
+
 ---
 
 ## 功能总览
 
 | 模块 | 能力 |
 |---|---|
-| 启动 | 角色启动页，设置里可跳过短片、关闭提示音 |
+| 启动 | 角色启动页 + dsh-video-skin 开场短片（有声，可点击跳过）；设置里可跳过短片、关闭提示音 |
 | 窗口 | 无边框，去掉系统白条；右上角自绘最小化/关闭，顶部可拖动，窗口名 HaloDesk |
-| 主题 | 流光壁纸（默认，大肥鱼壁纸+深色玻璃）/ 纯白 / 黑夜；设置最上方切换 |
+| 主题 | 流光壁纸（默认，w05 壁纸 + 深色玻璃）/ 纯白 / 黑夜；设置最上方切换 |
 | 登录 | 葫芦侠账号密码 / 灵芥密码、验证码、Token；可只登一个；记住密码 |
 | 登录失效 | 启动检测 + 10 秒消息轮询即时判定；只清失效平台，另一个继续工作 |
 | 签到 | 双平台各自签到；打开程序自动检测补签 |
@@ -52,36 +68,7 @@
 | 文生图 | 默认阿里云百炼；当前模型失败自动换备用；一键填地址和模型 |
 | AI | 日常用 deepseek-chat；逛社区决策/记忆压缩可选深度思考模型；支持 OpenAI 兼容自定义接口 |
 | 备份 | 设置页一键导出 data 为 zip |
-
----
-
-## 技术架构
-
-### 核心模块
-
-| 模块 | 文件 | 说明 |
-|---|---|---|
-| **AI 引擎** | `app/ai.py` | DeepSeek / OpenAI 兼容接口对话、文生图、多模型支持 |
-| **自动化核心** | `app/automation.py` | 消息监听、意图决策、自动回复、逛社区、发帖 |
-| **记忆系统** | `app/memory.py` | 通用记忆、生活记忆、用户记忆、心情管理 |
-| **社区客户端** | `app/hlx.py` / `app/lingjie.py` | 葫芦侠和灵芥的 API 封装 |
-| **人设脑** | `app/brain.py` | 系统提示词生成、决策解析、选项选择 |
-| **能力执行** | `app/capabilities.py` | 点赞、收藏、关注、评论等动作执行 |
-| **逛社区** | `app/roam.py` | 社区浏览、主页拜访、帖子互动 |
-
-### UI 组件
-
-| 页面 | 文件 | 功能 |
-|---|---|---|
-| 总览 | `app/ui/home.py` | 账号状态、心情卡片、总开关 |
-| 葫芦侠 | `app/ui/hlx_page.py` | 登录、签到、统计 |
-| 灵芥 | `app/ui/lingjie_page.py` | 登录、签到、统计 |
-| 自动任务 | `app/ui/auto_page.py` | 任务开关、测试功能、运行日志 |
-| 大肥鱼 | `app/ui/fish_page.py` | AI 配置、人设、发帖、关系管理 |
-| 记忆 | `app/ui/memory_page.py` | 记忆查看、压缩、清理 |
-| 设置 | `app/ui/settings_page.py` | 主题、备份、开机自启等 |
-| 调试 | `app/ui/debug_page.py` | 日志查看、提示词调试 |
-| 桌面宠物 | `app/ui/pet.py` | 浮窗动画、交互 |
+| 云端 | 启动时匿名统计安装量；检查更新 / 公告，强制更新由 version.txt 后台控制 |
 
 ---
 
@@ -91,7 +78,7 @@
 
 | 模式 | 说明 |
 |---|---|
-| 流光壁纸 | 默认。大肥鱼壁纸铺满，页面/卡片为深色玻璃，白字与蓝色按钮 |
+| 流光壁纸 | 默认。w05 壁纸铺满，页面/卡片为深色玻璃，白字与蓝色按钮 |
 | 纯白模式 | 干净白底，适合长时间看文字 |
 | 黑夜模式 | 深色底 |
 
@@ -131,7 +118,8 @@ data/
 ## 单 exe 还是完整包？
 
 - **只发 `HaloDesk.exe` 就能运行**：资源（图片、音视频、启动页）都打包在 exe 内，首次启动自动创建 `data/`。
-- 但 exe 不带说明文档、示例配置和备份脚本。
+- 但 exe 不带说明文档、示例配置和备份脚本；正式分享建议发 zip（去掉自己的 `data/`）。
+- 不要把含 `config.json` 的 `data/` 发给别人，里面有账号 Key。
 - 对方需要 Windows 10/11 64 位；首次运行可能被 SmartScreen 提示，选「更多信息 → 仍要运行」。
 
 ---
@@ -142,6 +130,8 @@ data/
 |---|---|
 | [docs/HANDOVER.md](docs/HANDOVER.md) | 架构、模块、关键流程、构建、测试 |
 | [docs/PROJECT_TREE.md](docs/PROJECT_TREE.md) | 完整项目树与每个目录作用 |
+| [docs/PROMO.md](docs/PROMO.md) | 抖音/其他平台的介绍文案与口播脚本 |
+| [docs/ADMIN_PROMPT.md](docs/ADMIN_PROMPT.md) | 给手机 AGI 的后台管理 App 生成提示词 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | 提示词清单与变量 |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | 版本变更记录 |
 
@@ -157,7 +147,7 @@ py -3.12 -m venv .venv
   --add-data "assets;assets" --runtime-tmpdir "." main.py
 ```
 
-`--runtime-tmpdir "."` 必须保留，否则受限环境会报 "Could not create temporary directory"。
+`--runtime-tmpdir "."` 必须保留，否则受限环境会报 “Could not create temporary directory”。
 
 ### 测试
 
@@ -172,7 +162,7 @@ python tools\gen_prompt_docs.py  # 重新生成提示词手册
 
 ## 常见问题
 
-**双击提示"应用程序无法正常启动"？**
+**双击提示“应用程序无法正常启动”？**
 杀软拦截或下载不完整。把 exe 所在文件夹加白名单，或重新解压。
 
 **评论/帖子发了但看不到？**

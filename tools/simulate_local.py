@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(r"C:\Users\渡渡\Documents\deepseek-harness\default-workspace\halo-desktop")
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # 隔离数据目录

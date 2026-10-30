@@ -11,8 +11,9 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel,
                                QWidget)
 
 from ..automation import AutoPilot
-from .. import memory
+from .. import memory, telemetry, updater
 from ..config import CFG
+from ..version import VERSION
 from ..hlx import HlxClient
 from ..lingjie import LingjieClient
 from ..paths import icon_path, resource
@@ -187,10 +188,28 @@ class MainWindow(QMainWindow):
         self._login_timer.setInterval(30000)
         self._login_timer.timeout.connect(lambda: self._check_logins(quiet=True))
         self._login_timer.start()
+        QTimer.singleShot(4500, self._check_update)
+        QTimer.singleShot(7000, self._report_usage)
         self._ui_timer = QTimer(self)
         self._ui_timer.setInterval(20000)
         self._ui_timer.timeout.connect(self._light_refresh)
         self._ui_timer.start()
+
+    def _check_update(self) -> None:
+        if "--selftest" in sys.argv:
+            return
+        try:
+            updater.check(self, manual=False)
+        except Exception:
+            pass
+
+    def _report_usage(self) -> None:
+        if "--selftest" in sys.argv:
+            return
+        try:
+            telemetry.report_async()
+        except Exception:
+            pass
 
     def _light_refresh(self) -> None:
         """轻量刷新当前页（只读本地数据，不请求网络）。"""
@@ -400,7 +419,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v10.5 · 桌面合并版")
+        ver = QLabel(f"v{VERSION} · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

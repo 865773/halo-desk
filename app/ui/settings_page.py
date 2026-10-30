@@ -358,9 +358,13 @@ class SettingsPage(Page):
             '本项目：<a style="color:{c}" href="https://gitee.com/guo-wenlong/halo-desk">'
             'gitee.com/guo-wenlong/halo-desk</a><br>'
             '葫芦侠大肥鱼：<a style="color:{c}" href="https://gitee.com/guo-wenlong/hlx-halo">'
-            'gitee.com/guo-wenlong/hlx-halo</a><br>'
+            'gitee.com/guo-wenlong/hlx-halo</a>　'
+            '<a href="https://gitee.com/guo-wenlong/hlx-halo/raw/master/release/HlxHalo.apk">'
+            '下载 APK</a><br>'
             '灵芥助手：<a style="color:{c}" href="https://gitee.com/guo-wenlong/lingjie-halo">'
-            'gitee.com/guo-wenlong/lingjie-halo</a><br>'
+            'gitee.com/guo-wenlong/lingjie-halo</a>　'
+            '<a href="https://gitee.com/guo-wenlong/lingjie-halo/raw/master/release/LingjieHelper.apk">'
+            '下载 APK</a><br>'
             '葫芦侠地址：<a style="color:{c}" href="https://www.huluxia.com">'
             'www.huluxia.com</a><br>'
             '灵芥空间地址：<a style="color:{c}" href="https://www.lingjie888.cn">'
@@ -371,6 +375,8 @@ class SettingsPage(Page):
         arow = QHBoxLayout()
         arow.addWidget(common.button("赞赏支持", primary=True,
                                      on_click=self.show_reward))
+        arow.addWidget(common.button("检查更新", ghost=True,
+                                     on_click=self._check_update))
         arow.addStretch(1)
         about.box.addLayout(arow)
         about.box.addWidget(common.hint(
@@ -455,6 +461,10 @@ class SettingsPage(Page):
             common.toast(self.app, f"导出失败：{e}", "error")
 
         common.run_bg(work, done, fail)
+
+    def _check_update(self) -> None:
+        from .. import updater
+        updater.check(self.app, manual=True)
 
     def show_reward(self) -> None:
         import os as _os
