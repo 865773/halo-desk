@@ -400,6 +400,22 @@ class HlxClient:
         ok = int(obj.get("status", 0) or 0) == 1
         return ok, obj.get("msg", "") or ("" if ok else "评论失败")
 
+    def comment_author(self, post_id: int, comment_id: int,
+                       pages: int = 3) -> int:
+        """确认评论属于谁；找不到返回 0。避免打赏到引用链里的旧评论。"""
+        cid = int(comment_id or 0)
+        if not cid:
+            return 0
+        for page in range(1, max(1, pages) + 1):
+            for c in self.comments(post_id, page):
+                if int(c.get("commentID", 0) or 0) == cid:
+                    u = c.get("user") or {}
+                    return int((u or {}).get("userID", 0) or 0)
+                ref = c.get("refComment") or {}
+                if isinstance(ref, dict) and int(ref.get("commentID", 0) or 0) == cid:
+                    return int(ref.get("userID", 0) or 0)
+        return 0
+
     def tip(self, post_id: int, score: int, text: str) -> tuple[bool, str]:
         """给帖子送葫芦。"""
         import re as _re

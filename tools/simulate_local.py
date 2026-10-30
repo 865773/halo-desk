@@ -138,6 +138,9 @@ class FakeHlx:
                                             "score": score, "text": text}))
         return True, ""
 
+    def comment_author(self, pid, cid, pages=3):
+        return 60
+
     def signin(self, cat):
         self.writes.append(("signin", {"cat": cat}))
         return True, ""

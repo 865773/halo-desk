@@ -497,7 +497,20 @@ def execute(action: str, platform: str, client, target: dict | None,
             why = _safe_tip_text(payload.get("content") or "")
             cid = int((ctx or {}).get("comment_id", 0) or 0)
             if cid:
-                # 回复场景和手机端一致：打赏「正在回复的这条评论」
+                # 先确认这条评论的作者就是消息发送者，避免引用链/旧帖评论被误打赏
+                try:
+                    author = client.comment_author(pid, cid)
+                except Exception:
+                    author = 0
+                want = int((ctx or {}).get("author_uid", 0) or 0)
+                if author and want and author != want:
+                    res["msg"] = "打赏对象对不上，已取消（避免送错人）"
+                    res.update(done=done, ok=False)
+                    return res
+                if not author:
+                    res["msg"] = "找不到要打赏的评论，已取消（避免送错人）"
+                    res.update(done=done, ok=False)
+                    return res
                 ok, _m = client.tip_comment(pid, cid, score, why)
             else:
                 ok, _m = client.tip(pid, score, why)
