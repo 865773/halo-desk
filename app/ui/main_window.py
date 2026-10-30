@@ -14,7 +14,7 @@ from .. import memory
 from ..config import CFG
 from ..hlx import HlxClient
 from ..lingjie import LingjieClient
-from ..paths import icon_path
+from ..paths import icon_path, resource
 from . import common, theme
 from .activity_page import ActivityPage
 from .auto_page import AutoPage
@@ -139,8 +139,9 @@ class MainWindow(QMainWindow):
         self._build_tray()
         self.autopilot.replied.connect(self._on_pet_reply)
         self.autopilot.incoming.connect(self._on_pet_incoming)
+        self.autopilot.incoming.connect(self._play_ding)
         self.autopilot.auth_failed.connect(self._on_auth_failed)
-        self.show_page(CFG.get("general.page", "home") or "home")
+        self.show_page("home")
         self._refresh_sidebar_status()
         QTimer.singleShot(1200, self._auto_signin)
         QTimer.singleShot(1800, self._refresh_profiles)
@@ -161,6 +162,25 @@ class MainWindow(QMainWindow):
         cur = self.stack.currentWidget()
         if cur is self.pages.get("home"):
             cur.refresh()
+
+    def _play_ding(self, *_a) -> None:
+        """收到消息的提示音（桌面的叮咚）。"""
+        import time as _t
+        now = _t.time()
+        if now - getattr(self, "_last_ding", 0) < 1.2:
+            return
+        self._last_ding = now
+        try:
+            if getattr(self, "_ding", None) is None:
+                from PySide6.QtCore import QUrl
+                from PySide6.QtMultimedia import QSoundEffect
+                self._ding = QSoundEffect(self)
+                self._ding.setSource(QUrl.fromLocalFile(
+                    resource("assets/dingdong.wav")))
+                self._ding.setVolume(0.75)
+            self._ding.play()
+        except Exception:
+            pass
 
     def _on_pet_incoming(self, platform: str, nick: str, text: str) -> None:
         if self.pet is None or not self.pet.isVisible():
@@ -256,7 +276,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.2 · 桌面合并版")
+        ver = QLabel("v9.3 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -601,13 +621,5 @@ class MainWindow(QMainWindow):
             self.quit()
 
     def changeEvent(self, e) -> None:  # noqa: N802
-        # 最小化时收进托盘，继续后台运行
-        if e.type() == e.Type.WindowStateChange and self.isMinimized():
-            e.ignore()
-            self.hide()
-            try:
-                self.tray.showMessage("大肥鱼在后台运行", "点托盘图标恢复窗口。",
-                                      QSystemTrayIcon.Information, 1500)
-            except Exception:
-                pass
+        # 最小化就是普通最小化，不收回托盘；只有点关闭才进托盘
         super().changeEvent(e)

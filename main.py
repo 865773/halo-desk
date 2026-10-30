@@ -77,7 +77,16 @@ def main() -> int:
         server.listen(name)
 
     win = MainWindow()
-    win.show()
+    splash = None
+    if "--selftest" not in sys.argv:
+        from app.ui.splash import Splash
+        splash = Splash()
+        splash.finished.connect(win.show)
+        splash.finished.connect(win.raise_)
+        splash.finished.connect(win.activateWindow)
+        splash.start()
+    else:
+        win.show()
     if server is not None:
         def _another() -> None:
             while server.hasPendingConnections():
@@ -95,7 +104,15 @@ def main() -> int:
     if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
         from PySide6.QtCore import QTimer
         from app.ui.wizard import Wizard
-        QTimer.singleShot(600, lambda: Wizard(win).exec())
+
+        def _wizard() -> None:
+            if splash is not None:
+                splash.finished.connect(lambda: QTimer.singleShot(
+                    400, lambda: Wizard(win).exec()))
+            else:
+                QTimer.singleShot(600, lambda: Wizard(win).exec())
+
+        _wizard()
     if "--selftest" in sys.argv:
         from PySide6.QtCore import QTimer
 
