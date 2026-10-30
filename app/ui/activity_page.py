@@ -48,6 +48,7 @@ ACTION_CN = {
     "publish_post": "发帖",
     "sign_in": "签到",
     "nothing": "什么都不做",
+    "roam": "逛社区",
     "post_like": "点赞",
     "post_favorite": "收藏",
     "post_comment": "评论",
@@ -72,7 +73,7 @@ def humanize(text: str) -> str:
     m = re.match(r"^看《(.+?)》\s*→\s*决定\s*([a-z_]+)", s)
     if m:
         rest = s[m.end():]
-        return f"打开《{m.group(1)}》，打算{_cn(m.group(2))}{rest}"
+        s = f"打开《{m.group(1)}》，打算{_cn(m.group(2))}{rest}"
     # 决定回复 X：内容（visit_profile）
     m = re.match(r"^决定回复\s*([^：:]+)[：:](.*)$", s)
     if m:
@@ -83,14 +84,23 @@ def humanize(text: str) -> str:
             code = mm.group(1)
             tail = tail[:mm.start()].rstrip()
         extra = "" if code in ("", "nothing") else f"，顺便{_cn(code)}"
-        return f"回复了 {m.group(1).strip()}：{tail}{extra}"
+        s = f"回复了 {m.group(1).strip()}：{tail}{extra}"
     # 决定 X / 决定去做 X
     m = re.match(r"^决定\s*([a-z_]+)\s*(.*)$", s)
     if m:
-        return f"打算{_cn(m.group(1))}{m.group(2)}"
+        s = f"打算{_cn(m.group(1))}{m.group(2)}"
     # 括号里的代码
     s = re.sub(r"（([a-z_]+)）", lambda mm: f"（{_cn(mm.group(1))}）", s)
     # 一些常见叙述换成更直白的说法
+    s = re.sub(r"（逛(hlx|lingjie)社区\((\d+) 个动作\)）",
+               lambda mm: ("，逛了葫芦侠" if mm.group(1) == "hlx" else "，逛了灵芥")
+               + f"，做了 {mm.group(2)} 件事", s)
+    s = re.sub(r"决定做\s*([a-z_]+)\s*但没执行成功[：:]\s*(.*)",
+               lambda mm: f"想{_cn(mm.group(1))}，但没成功：{mm.group(2)}", s)
+    s = re.sub(r"决定做\s*([a-z_]+)", lambda mm: f"打算{_cn(mm.group(1))}", s)
+    # 兜底：把剩下的下划线动作代码全部翻译
+    s = re.sub(r"(?<![a-zA-Z_])([a-z]+(?:_[a-z]+)+)(?![a-zA-Z_])",
+               lambda mm: _cn(mm.group(1)), s)
     s = re.sub(r"去\s*uid=(\d+)\s*的主页看了帖子", r"去 TA（uid=\1）的主页逛了逛", s)
     s = re.sub(r"去\s*@([^\s的]+)\s*的主页看了帖子", r"去 @\1 的主页逛了逛", s)
     s = re.sub(r"（(\d+) 个动作）", r"，做了 \1 件事", s)
