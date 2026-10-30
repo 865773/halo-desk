@@ -36,11 +36,15 @@ class Page(QWidget):
         self.body.setSpacing(16)
         area.setWidget(inner)
         vp = area.viewport()
-        vp.setAutoFillBackground(True)
-        from PySide6.QtGui import QColor, QPalette
-        pal = vp.palette()
-        pal.setColor(QPalette.Window, QColor(theme.BG2))
-        vp.setPalette(pal)
+        if getattr(theme, "WALL", False):
+            vp.setAutoFillBackground(False)
+            vp.setStyleSheet("background: transparent;")
+        else:
+            vp.setAutoFillBackground(True)
+            from PySide6.QtGui import QColor, QPalette
+            pal = vp.palette()
+            pal.setColor(QPalette.Window, QColor(theme.BG2))
+            vp.setPalette(pal)
         outer.addWidget(area, 1)
 
     def refresh(self) -> None:  # pragma: no cover - 由子类覆盖

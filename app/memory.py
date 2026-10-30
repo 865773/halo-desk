@@ -296,6 +296,21 @@ def recent_life(n: int = 5, platform: str = "") -> str:
     return "\n".join(lines)
 
 
+def clean_life_actions() -> None:
+    """删掉旧版误写进生活记忆的社区回复/评论行。"""
+    try:
+        if not LIFE_FILE.exists():
+            return
+        lines = LIFE_FILE.read_text("utf-8").splitlines()
+        keep = [ln for ln in lines
+                if not ("我在葫芦侠" in ln or "我在灵芥" in ln
+                        or ("回复" in ln and "评论" in ln))]
+        if len(keep) != len(lines):
+            LIFE_FILE.write_text("\n".join(keep) + ("\n" if keep else ""), "utf-8")
+    except Exception:
+        pass
+
+
 def reset_life_if_new_day() -> None:
     try:
         if LIFE_FILE.exists():

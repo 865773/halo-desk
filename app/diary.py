@@ -45,37 +45,27 @@ def gen_life(force: bool = False) -> str:
         period = "傍晚"
     else:
         period = "深夜"
-    # 只取上次记录之后发生的事，写成时间线，不再整天覆盖
-    since = _dt.fromtimestamp(last) if last else (now - timedelta(hours=1))
-    try:
-        from .activity import ACT
-        events = []
-        for it in ACT.recent(120):
-            ts = str(it.get("ts") or "")
-            try:
-                when = _dt.strptime(f"{now.year}-{ts}", "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                continue
-            if when < since:
-                continue
-            events.append(f"{ts[-8:-3]} {it.get('text', '')}")
-        events = events[-20:]
-    except Exception:
-        events = []
-    timeline = "\n".join(events)
-    place_hint = random.choice([
-        "楼下便利店", "附近公园", "常去的那家小饭馆", "商场", "书店",
-        "奶茶店", "河边", "朋友家", "夜市", "电影院",
-    ]) if random.random() < 0.5 else ""
+    # 生活记录只写「现实生活」，不复述社区回复/评论
+    scenes = random.sample([
+        "去楼下便利店买喝的", "逛超市顺手拿零食", "买一杯奶茶慢慢喝",
+        "在附近公园散步", "逛街试衣服", "去书店翻书",
+        "和朋友吃饭", "在家追剧", "收拾房间", "取快递",
+        "在河边坐着发呆", "去夜市逛逛", "看电影", "买花",
+        "喂楼下的猫", "做饭", "睡了个回笼觉", "刷手机赖床",
+    ], 3)
+    place_hint = "、".join(scenes)
     try:
         out = ai.ask(
-            "根据下面这段时间真实发生的事，写 2~4 条生活时间线。"
-            "每条一行，格式必须是：[HH:MM] 发生了什么（第一人称、口语、具体场景）。"
-            "只写这些事，按时间先后，不要总结整天，不要复述更早的记录。"
+            "你在写自己的现实生活记录，不是在写社区动态。"
             f"现在是 {now.strftime('%H:%M')}（{period}）。"
-            + (f"可以自然补充一两句宅家/出门的细节（比如{place_hint}）。"
-               if place_hint else ""),
-            (timeline or recent or "这段时间没发生什么特别的事。").strip(),
+            "请写 2~4 条最近这段的真实生活时间线，每条一行，格式 [HH:MM] 发生了什么。"
+            "第一人称、口语、具体，像真人日记；可以写出门、买东西、散步、宅家、追剧、"
+            "和朋友相处这类日常，也可以有一点点情绪和小事。"
+            f"这次可以参考：{place_hint}。"
+            "绝对不要提社区、帖子、评论、回复、点赞、关注、发帖，也不要复述聊天内容。"
+            "只写生活本身，不要总结整天，不要和之前的记录重复。",
+            ("【之前的生活记录，仅供衔接】\n" + life_before).strip()
+            or f"今天是 {now.strftime('%Y-%m-%d')}，还没有生活记录。",
             None)
     except Exception as e:
         DBG.log("LIFE", f"生成生活记录失败：{e}", "WARN")
@@ -84,6 +74,7 @@ def gen_life(force: bool = False) -> str:
     if not text:
         return ""
     memory.reset_life_if_new_day()
+    memory.clean_life_actions()
     lines = []
     for ln in text.splitlines():
         ln = ln.strip().lstrip("-•· ").strip()

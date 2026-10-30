@@ -161,6 +161,7 @@ DEFAULTS: dict = {
         "autostart": False,
         "first_run": True,
         "dark_mode": False,
+        "ui_mode": "wallpaper",
         "skip_video_splash": False,
         "close_action": "",
         "page": "home",

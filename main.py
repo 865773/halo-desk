@@ -54,7 +54,7 @@ def main() -> int:
     app.setOrganizationName("Dudu")
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
-    theme.apply(app)
+    theme.apply(app, CFG.get("general.ui_mode", "wallpaper"))
     app.setFont(QFont("Microsoft YaHei UI", 9))
 
     ic = icon_path()

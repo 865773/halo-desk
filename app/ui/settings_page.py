@@ -125,19 +125,26 @@ class SettingsPage(Page):
         self.autostart.setChecked(autostart_enabled())
         self.autostart.stateChanged.connect(self._toggle_autostart)
         general.box.addWidget(self.autostart)
-        self.dark = QCheckBox("黑夜模式")
-        self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
-        self.dark.stateChanged.connect(self._toggle_dark)
-        general.box.addWidget(self.dark)
-        self.skip_video = QCheckBox("跳过开场视频（保留原启动页）")
+        mrow = QHBoxLayout()
+        mrow.addWidget(QLabel("界面模式"))
+        self.ui_mode = QComboBox()
+        self.ui_mode.addItem("流光壁纸（默认）", "wallpaper")
+        self.ui_mode.addItem("纯白模式", "light")
+        self.ui_mode.addItem("黑夜模式", "dark")
+        cur = CFG.get("general.ui_mode", "wallpaper")
+        idx = max(0, self.ui_mode.findData(cur))
+        self.ui_mode.setCurrentIndex(idx)
+        self.ui_mode.currentIndexChanged.connect(self._change_ui_mode)
+        mrow.addWidget(self.ui_mode, 1)
+        general.box.addLayout(mrow)
+        general.box.addWidget(common.hint(
+            "流光壁纸：角色壁纸 + 半透明侧栏；纯白：干净白底；黑夜：深色。"
+            "切换后重启完全生效。"))
+        self.skip_video = QCheckBox("跳过开场动画")
         self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
         self.skip_video.stateChanged.connect(
             lambda s: (CFG.set("general.skip_video_splash", bool(s)), CFG.save()))
         general.box.addWidget(self.skip_video)
-        general.box.addWidget(common.hint(
-            "只跳过 dsh-video-skin 的开场短片；原来的角色启动页仍会显示。"))
-        general.box.addWidget(common.hint(
-            "默认浅色；打开黑夜模式后重启程序完全生效。"))
         general.box.addWidget(common.hint(
             "写入当前用户的注册表启动项（HKCU\\...\\Run），不需要管理员权限。"))
         self.body.addWidget(general)
@@ -373,12 +380,12 @@ class SettingsPage(Page):
         else:
             common.toast(self.app, "设置失败（可能被安全软件拦截）", "err")
 
-    def _toggle_dark(self, state) -> None:
-        CFG.set("general.dark_mode", bool(state))
+    def _change_ui_mode(self, _idx: int = 0) -> None:
+        mode = self.ui_mode.currentData() or "wallpaper"
+        CFG.set("general.ui_mode", mode)
+        CFG.set("general.dark_mode", mode == "dark")
         CFG.save()
-        from . import theme
-        theme.apply(self.app.window(), bool(state))
-        common.toast(self.app, "已切换，部分界面重启后完全生效", "ok")
+        common.toast(self.app, "已保存，重启后完整生效", "ok")
 
     def clear_all_data(self) -> None:
         """重置配置（账号/Key/开关），但保留 data/账号/<平台>/<uid> 下的记忆。"""
@@ -561,8 +568,9 @@ class SettingsPage(Page):
 
     def refresh(self) -> None:
         """从配置重新读一遍，避免向导改完这里还显示旧值。"""
-        self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
         self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
+        self.ui_mode.setCurrentIndex(
+            max(0, self.ui_mode.findData(CFG.get("general.ui_mode", "wallpaper"))))
         self.autostart.setChecked(autostart_enabled())
         self.pet_on.setChecked(bool(CFG.get("fish.pet_on", True)))
         self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))

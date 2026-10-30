@@ -24,6 +24,7 @@ DARK = {
 }
 
 P = dict(LIGHT)
+WALL = False
 BG = P["BG"]; BG2 = P["BG2"]; CARD = P["CARD"]; CARD2 = P["CARD2"]
 LINE = P["LINE"]; TEXT = P["TEXT"]; MUTED = P["MUTED"]
 ACCENT = P["ACCENT"]; ACCENT2 = P["ACCENT2"]; OK = P["OK"]
@@ -201,13 +202,46 @@ def _set_globals(p: dict) -> None:
 
 
 def is_dark() -> bool:
+    mode = CFG.get("general.ui_mode", "")
+    if mode:
+        return mode == "dark"
     return bool(CFG.get("general.dark_mode", False))
 
 
-def apply(app, dark: bool | None = None) -> None:
-    _set_globals(DARK if (dark if dark is not None else is_dark()) else LIGHT)
+def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
+    global WALL
+    if mode is None:
+        mode = "dark" if (dark if dark is not None else is_dark()) else "light"
+    if mode == "wallpaper":
+        _set_globals(LIGHT)
+        WALL = True
+    elif mode == "dark":
+        _set_globals(DARK)
+        WALL = False
+    else:
+        _set_globals(LIGHT)
+        WALL = False
     if app is not None:
-        app.setStyleSheet(QSS)
+        qss = QSS
+        if WALL:
+            try:
+                from pathlib import Path
+                img = Path(__file__).resolve().parents[2] / "assets" / "wallpaper.jpg"
+                url = str(img).replace("\\", "/")
+                qss += (
+                    f'QWidget#root {{ border-image: url("{url}") 0 0 0 0 '
+                    f'stretch stretch; background: transparent; }}'
+                    f'QWidget#sidebar {{ background: rgba(255,255,255,0.80); '
+                    f'border-right: 1px solid {LINE}; }}'
+                    f'QWidget#pageBody, QWidget#pageBody > QWidget {{ '
+                    f'background: transparent; }}'
+                    f'QScrollArea > QWidget#qt_scrollarea_viewport {{ '
+                    f'background: transparent; }}'
+                    f'QFrame#card {{ background: rgba(255,255,255,0.90); }}'
+                )
+            except Exception:
+                pass
+        app.setStyleSheet(qss)
 
 
 def card_style(radius: int = 14) -> str:
