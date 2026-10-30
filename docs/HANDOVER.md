@@ -157,7 +157,7 @@ python tools\gen_prompt_docs.py  # 生成 PROMPTS.md / prompts.json
 
 ## 9. 接手第一步
 
-1. 跑一次 `simulate_local.py`，确认 50 项全过；
+1. 跑一次 `simulate_local.py`，确认 66 项全过；
 2. 用测试账号跑 `verify_real.py`，看接口是否仍兼容；
 3. 打开界面走一遍：登录 → 测试发帖 → 逛一次社区 → 看「动态」；
 4. 改提示词前先读 `docs/PROMPTS.md`，改动作表前先读 `capabilities.py`。

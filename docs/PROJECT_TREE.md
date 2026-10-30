@@ -47,7 +47,7 @@ halo-desktop/
 │  └─ debuglog.py             调试日志
 │
 ├─ app/ui/                    界面
-│  ├─ main_window.py          主窗口、侧栏、托盘、单实例、登录失效处理
+│  ├─ main_window.py          无边框主窗口、自绘窗口按钮、侧栏、托盘、单实例、登录失效处理
 │  ├─ theme.py                三套主题（流光壁纸/纯白/黑夜）与 QSS
 │  ├─ common.py               卡片、按钮、提示等通用组件
 │  ├─ base.py                 页面基类（滚动区/玻璃面板）
