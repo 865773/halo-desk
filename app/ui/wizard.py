@@ -490,6 +490,11 @@ class Wizard(QDialog):
             dlg.resize(420, 520)
             v = _VBox(dlg)
             lst = QListWidget()
+            try:
+                from . import common as _common
+                _common.dark_viewport(lst)
+            except Exception:
+                pass
             rows = []
             for f in fans:
                 u = f.get("user") or f

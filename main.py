@@ -85,9 +85,20 @@ def main() -> int:
         QTimer.singleShot(80, _really_show)
 
     def _really_show() -> None:
+        win.setWindowOpacity(0.0)
         win.show()
         win.raise_()
         win.activateWindow()
+        try:
+            from PySide6.QtCore import QPropertyAnimation
+            anim = QPropertyAnimation(win, b"windowOpacity", win)
+            anim.setDuration(260)
+            anim.setStartValue(0.0)
+            anim.setEndValue(1.0)
+            anim.start()
+            win._fade_anim = anim
+        except Exception:
+            win.setWindowOpacity(1.0)
         if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
             from PySide6.QtCore import QTimer
             from app.ui.wizard import Wizard

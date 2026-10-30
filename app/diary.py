@@ -29,6 +29,7 @@ def gen_life(force: bool = False) -> str:
     if not force and time.time() - last < interval:
         return ""
     recent = memory.recent(14, "hlx")
+    memory.reset_life_if_new_day()
     life_before = memory.recent_life(3)
     from datetime import datetime as _dt, timedelta
     now = _dt.now()
@@ -45,26 +46,33 @@ def gen_life(force: bool = False) -> str:
         period = "傍晚"
     else:
         period = "深夜"
-    # 生活记录只写「现实生活」，不复述社区回复/评论
+    # 生活记录只写「现实生活」，每次在上次记录基础上补「这一小时」
     scenes = random.sample([
         "去楼下便利店买喝的", "逛超市顺手拿零食", "买一杯奶茶慢慢喝",
         "在附近公园散步", "逛街试衣服", "去书店翻书",
         "和朋友吃饭", "在家追剧", "收拾房间", "取快递",
         "在河边坐着发呆", "去夜市逛逛", "看电影", "买花",
         "喂楼下的猫", "做饭", "睡了个回笼觉", "刷手机赖床",
-    ], 3)
+    ], 2)
     place_hint = "、".join(scenes)
+    import re as _re
+    _times = _re.findall(r"\[(\d{2}:\d{2})\]", life_before or "")
+    last_hm = _times[-1] if _times else (now - timedelta(minutes=60)).strftime("%H:%M")
+    now_hm = now.strftime("%H:%M")
     try:
         out = ai.ask(
-            "你在写自己的现实生活记录，不是在写社区动态。"
-            f"现在是 {now.strftime('%H:%M')}（{period}）。"
-            "请写 2~4 条最近这段的真实生活时间线，每条一行，格式 [HH:MM] 发生了什么。"
-            "第一人称、口语、具体，像真人日记；可以写出门、买东西、散步、宅家、追剧、"
-            "和朋友相处这类日常，也可以有一点点情绪和小事。"
-            f"这次可以参考：{place_hint}。"
+            "你在补写自己今天的生活时间线，不是在写社区动态。"
+            f"现在是 {now.strftime('%Y-%m-%d %H:%M')}（{period}），"
+            f"上一条生活记录停在 {last_hm}。"
+            f"只写从 {last_hm} 到 {now_hm} 这一小时里新发生的 1~3 条，"
+            "每条一行，格式 [HH:MM] 发生了什么，时间必须落在这一个小时内、按先后排列。"
+            "第一人称、口语、具体，像真人日记；写这一小时在干嘛：出门、买东西、散步、宅家、"
+            "追剧、和朋友相处、吃饭、休息都可以，也可以有一点点情绪和小事。"
+            f"可以从这些里挑：{place_hint}。"
+            "不要复述上一条，不要总结整天，不要编明天；"
             "绝对不要提社区、帖子、评论、回复、点赞、关注、发帖，也不要复述聊天内容。"
-            "只写生活本身，不要总结整天，不要和之前的记录重复。",
-            ("【之前的生活记录，仅供衔接】\n" + life_before).strip()
+            "目标是和之前的记录拼成完整的一天。",
+            ("【今天已经记录的生活（只用来衔接，不要重复）】\n" + life_before).strip()
             or f"今天是 {now.strftime('%Y-%m-%d')}，还没有生活记录。",
             None)
     except Exception as e:

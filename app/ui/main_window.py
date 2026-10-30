@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel,
-                               QMainWindow, QMenu, QPushButton, QStackedWidget,
-                               QSystemTrayIcon, QVBoxLayout, QWidget)
+                               QMainWindow, QMenu, QPushButton, QSizeGrip,
+                               QStackedWidget, QSystemTrayIcon, QVBoxLayout,
+                               QWidget)
 
 from ..automation import AutoPilot
 from .. import memory
@@ -123,7 +124,8 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(4000, self._warm_emoji)
         QTimer.singleShot(6000, self._warm_names)
 
-        self.setWindowTitle("大肥鱼桌面版 · 葫芦侠 + 灵芥")
+        self.setWindowTitle("HaloDesk")
+        self.setWindowFlag(Qt.FramelessWindowHint, True)
         self.setMinimumSize(940, 640)
         try:
             scr = QApplication.primaryScreen().availableGeometry()
@@ -169,6 +171,7 @@ class MainWindow(QMainWindow):
         self.stack.currentChanged.connect(self._on_page_changed)
 
         self._build_tray()
+        self._build_window_controls()
         self.autopilot.replied.connect(self._on_pet_reply)
         self.autopilot.incoming.connect(self._on_pet_incoming)
         self.autopilot.incoming.connect(self._play_ding)
@@ -195,8 +198,73 @@ class MainWindow(QMainWindow):
         if cur is self.pages.get("home"):
             cur.refresh()
 
+    def _build_window_controls(self) -> None:
+        """无边框窗口：右上角自绘最小化/关闭，顶部可拖动。"""
+        host = self.centralWidget() or self
+        self._winbtns = QWidget(host)
+        h = QHBoxLayout(self._winbtns)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(4)
+        fg = "#F4F8FF" if theme.WALL else theme.TEXT
+        hover = ("rgba(255,255,255,0.16)" if theme.WALL
+                 else getattr(theme, "HOVER", theme.CARD2))
+        for text, slot, danger in (("—", lambda: self.showMinimized(), False),
+                                   ("✕", lambda: self.close(), True)):
+            b = QPushButton(text)
+            b.setFixedSize(30, 28)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFocusPolicy(Qt.NoFocus)
+            b.clicked.connect(slot)
+            hv = "rgba(220,38,38,0.75)" if danger else hover
+            b.setStyleSheet(
+                f"QPushButton{{border:none;background:transparent;color:{fg};"
+                f"font-size:14px;font-weight:700;border-radius:8px;padding:0px;}}"
+                f"QPushButton:hover{{background:{hv};color:#FFFFFF;}}")
+            h.addWidget(b)
+        self._drag = QWidget(host)
+        self._drag.setCursor(Qt.SizeAllCursor)
+        self._drag.installEventFilter(self)
+        self._drag.setStyleSheet("background: transparent;")
+        self._grip = QSizeGrip(host)
+        self._position_window_controls()
+
+    def _position_window_controls(self) -> None:
+        if not hasattr(self, "_winbtns"):
+            return
+        self._winbtns.resize(64, 28)
+        self._winbtns.move(max(0, self.width() - 74), 10)
+        self._winbtns.raise_()
+        self._drag.setGeometry(0, 0, max(0, self.width() - 84), 30)
+        self._drag.raise_()
+        self._winbtns.raise_()
+        self._grip.move(max(0, self.width() - 18), max(0, self.height() - 18))
+        self._grip.raise_()
+
+    def showEvent(self, e) -> None:  # noqa: N802
+        super().showEvent(e)
+        self._position_window_controls()
+        QTimer.singleShot(0, self._position_window_controls)
+
+    def resizeEvent(self, e) -> None:  # noqa: N802
+        super().resizeEvent(e)
+        self._position_window_controls()
+
+    def eventFilter(self, obj, e) -> bool:  # noqa: N802
+        if obj is getattr(self, "_drag", None):
+            if e.type() == QEvent.MouseButtonDblClick:
+                self.showNormal() if self.isMaximized() else self.showMaximized()
+                return True
+            if e.type() == QEvent.MouseButtonPress and e.button() == Qt.LeftButton:
+                wh = self.windowHandle()
+                if wh is not None:
+                    wh.startSystemMove()
+                    return True
+        return super().eventFilter(obj, e)
+
     def _play_ding(self, *_a) -> None:
         """收到消息的提示音：原版叮咚 mp3，只响一次。"""
+        if CFG.get("general.mute_ding", False):
+            return
         import os
         import time as _t
         now = _t.time()
@@ -315,7 +383,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.9 · 桌面合并版")
+        ver = QLabel("v10.0 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

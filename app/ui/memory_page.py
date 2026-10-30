@@ -49,6 +49,8 @@ class MemoryPage(Page):
 
         card = common.Card(padding=10, spacing=0)
         self.view = QTextBrowser()
+        from . import common as _common
+        _common.dark_viewport(self.view)
         self.view.setStyleSheet("font-size:13px;")
         card.box.addWidget(self.view)
         self.body.addWidget(card)

@@ -240,8 +240,7 @@ def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
         if WALL:
             qss += (
                 "QListWidget, QListView, QTreeView, QTableWidget {"
-                " background: #101B30; color: #F4F8FF;"
-                " border: 1px solid rgba(255,255,255,0.18); }"
+                " background: #101B30; color: #F4F8FF; border: none; }"
                 "QTextBrowser, QTextEdit, QPlainTextEdit {"
                 " background: rgba(6,12,26,0.78); color: #F4F8FF; }"
                 "QComboBox QAbstractItemView { background: #101B30;"

@@ -69,6 +69,25 @@ def line() -> QFrame:
     return f
 
 
+def dark_viewport(widget) -> None:
+    """壁纸模式下把列表/文本区的视口也刷成深色，去掉白边。"""
+    from . import theme
+    if not getattr(theme, "WALL", False):
+        return
+    try:
+        from PySide6.QtGui import QColor, QPalette
+        from PySide6.QtWidgets import QFrame
+        widget.setFrameShape(QFrame.NoFrame)
+        vp = widget.viewport()
+        vp.setAutoFillBackground(True)
+        pal = vp.palette()
+        pal.setColor(QPalette.Base, QColor("#0F1A2E"))
+        pal.setColor(QPalette.Window, QColor("#0F1A2E"))
+        vp.setPalette(pal)
+    except Exception:
+        pass
+
+
 def button(text: str, primary: bool = False, ghost: bool = False,
            on_click: Optional[Callable] = None, width: int = 0) -> QPushButton:
     b = QPushButton(text)

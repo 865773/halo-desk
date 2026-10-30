@@ -120,11 +120,24 @@ class VideoSplash(QWidget):
             self.video.hide()
         except Exception:
             pass
-        self.hide()
-        # 等媒体回调退出后再通知主界面，避免删除对象时卡住
-        QTimer.singleShot(30, self._emit_finished)
+        # 短片最后淡出，避免硬切到主界面
+        try:
+            from PySide6.QtCore import QPropertyAnimation
+            self._fade = QPropertyAnimation(self, b"windowOpacity", self)
+            self._fade.setDuration(200)
+            self._fade.setStartValue(1.0)
+            self._fade.setEndValue(0.0)
+            self._fade.finished.connect(self._emit_finished)
+            self._fade.start()
+            QTimer.singleShot(340, self._emit_finished)
+        except Exception:
+            QTimer.singleShot(30, self._emit_finished)
 
     def _emit_finished(self) -> None:
+        if getattr(self, "_emitted", False):
+            return
+        self._emitted = True
+        self.hide()
         self.finished.emit()
         self.deleteLater()
 

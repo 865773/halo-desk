@@ -43,14 +43,16 @@ class UserMemoryCard(common.Card):
         row = QHBoxLayout()
         row.setSpacing(10)
         self.lst = QListWidget()
+        common.dark_viewport(self.lst)
         self.lst.setFixedWidth(260)
         wall = bool(getattr(theme, "WALL", False))
         list_bg = "#0F1A2E" if wall else theme.FIELD
         list_fg = "#F4F8FF" if wall else theme.TEXT
         list_sel = "#2B4A7A" if wall else theme.SEL
+        list_border = "none" if wall else f"1px solid {theme.LINE}"
         self.lst.setStyleSheet(
             f"QListWidget{{font-size:12px;background:{list_bg};"
-            f"color:{list_fg};border:1px solid {theme.LINE};"
+            f"color:{list_fg};border:{list_border};"
             f"border-radius:10px;padding:4px;outline:none;}}"
             f"QListWidget::item{{padding:6px 8px;border-radius:6px;color:{list_fg};}}"
             f"QListWidget::item:selected{{background:{list_sel};color:{list_fg};}}")
@@ -58,9 +60,10 @@ class UserMemoryCard(common.Card):
         row.addWidget(self.lst)
 
         self.view = QTextBrowser()
+        common.dark_viewport(self.view)
         self.view.setStyleSheet(
             f"font-size:12px;background:{list_bg};color:{list_fg};"
-            f"border:1px solid {theme.LINE};border-radius:10px;padding:10px;")
+            f"border:{list_border};border-radius:10px;padding:10px;")
         self.view.setPlaceholderText("左边点一个名字")
         row.addWidget(self.view, 1)
         self.box.addLayout(row)

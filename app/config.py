@@ -163,6 +163,7 @@ DEFAULTS: dict = {
         "dark_mode": False,
         "ui_mode": "wallpaper",
         "skip_video_splash": False,
+        "mute_ding": False,
         "close_action": "",
         "page": "home",
     },

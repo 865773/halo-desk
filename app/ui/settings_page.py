@@ -140,6 +140,11 @@ class SettingsPage(Page):
             "流光壁纸：角色壁纸 + 半透明侧栏；纯白：干净白底；黑夜：深色。"
             "切换后重启完全生效。"))
         general.box.addWidget(self.autostart)
+        self.mute_ding = QCheckBox("关闭消息提示音")
+        self.mute_ding.setChecked(bool(CFG.get("general.mute_ding", False)))
+        self.mute_ding.stateChanged.connect(
+            lambda s: (CFG.set("general.mute_ding", bool(s)), CFG.save()))
+        general.box.addWidget(self.mute_ding)
         self.skip_video = QCheckBox("跳过开场动画")
         self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
         self.skip_video.stateChanged.connect(
@@ -488,6 +493,7 @@ class SettingsPage(Page):
         lay = QVBoxLayout(dlg)
         body = QHBoxLayout()
         lst = QListWidget()
+        common.dark_viewport(lst)
         lst.setFixedWidth(180)
         for key, name, trig in faces:
             it = QListWidgetItem(f"{name}\n{trig}")
@@ -568,6 +574,7 @@ class SettingsPage(Page):
 
     def refresh(self) -> None:
         """从配置重新读一遍，避免向导改完这里还显示旧值。"""
+        self.mute_ding.setChecked(bool(CFG.get("general.mute_ding", False)))
         self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
         self.ui_mode.setCurrentIndex(
             max(0, self.ui_mode.findData(CFG.get("general.ui_mode", "wallpaper"))))
