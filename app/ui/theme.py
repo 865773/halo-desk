@@ -222,26 +222,7 @@ def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
         _set_globals(LIGHT)
         WALL = False
     if app is not None:
-        qss = QSS
-        if WALL:
-            try:
-                from pathlib import Path
-                img = Path(__file__).resolve().parents[2] / "assets" / "wallpaper.jpg"
-                url = str(img).replace("\\", "/")
-                qss += (
-                    f'QWidget#root {{ border-image: url("{url}") 0 0 0 0 '
-                    f'stretch stretch; background: transparent; }}'
-                    f'QWidget#sidebar {{ background: rgba(255,255,255,0.80); '
-                    f'border-right: 1px solid {LINE}; }}'
-                    f'QWidget#pageBody, QWidget#pageBody > QWidget {{ '
-                    f'background: transparent; }}'
-                    f'QScrollArea > QWidget#qt_scrollarea_viewport {{ '
-                    f'background: transparent; }}'
-                    f'QFrame#card {{ background: rgba(255,255,255,0.90); }}'
-                )
-            except Exception:
-                pass
-        app.setStyleSheet(qss)
+        app.setStyleSheet(QSS)
 
 
 def card_style(radius: int = 14) -> str:

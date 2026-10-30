@@ -16,9 +16,13 @@ class Card(QFrame):
     def __init__(self, parent=None, padding: int = 18, spacing: int = 10):
         super().__init__(parent)
         self.setObjectName("card")
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.box = QVBoxLayout(self)
         self.box.setContentsMargins(padding, padding, padding, padding)
         self.box.setSpacing(spacing)
+
+    def paintEvent(self, e) -> None:  # noqa: N802
+        super().paintEvent(e)
 
 
 def title(text: str, sub: str = "") -> QWidget:

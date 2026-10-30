@@ -626,6 +626,16 @@ class AutoPilot(QObject):
                     _save_state(self.state)
                     continue
                 try:
+                    from . import bots
+                    if bots.is_bot(platform, c.get("uid", 0)):
+                        if c["cid"] not in self.state[seen_key]:
+                            self.state[seen_key].append(c["cid"])
+                        _save_state(self.state)
+                        DBG.log("BOT", f"疑似机器人 {c.get('nick') or c.get('uid')}，跳过")
+                        continue
+                except Exception:
+                    pass
+                try:
                     self.incoming.emit(platform, c.get("nick", ""),
                                        str(c.get("text") or "")[:80])
                 except Exception:
@@ -827,6 +837,12 @@ class AutoPilot(QObject):
                 avg = sum(gaps) / max(1, len(gaps))
                 if avg <= gap_sec:
                     self.state[f"loop_mute_{platform}_{uid}"] = now + mute
+                    try:
+                        from . import bots
+                        bots.mark(platform, uid, nick,
+                                  f"10 分钟内高频互刷 {len(arr)} 次，平均间隔 {avg:.0f} 秒")
+                    except Exception:
+                        pass
                     self.log.emit(f"⏸ 和 {nick or uid} 回复太频繁，疑似机器人互刷，"
                                   f"暂停 {mute // 60} 分钟")
                     try:

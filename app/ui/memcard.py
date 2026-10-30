@@ -26,6 +26,8 @@ class UserMemoryCard(common.Card):
         head.addWidget(common.card_title(title))
         head.addStretch(1)
         head.addWidget(common.button("刷新", ghost=True, on_click=self.reload))
+        head.addWidget(common.button("取消机器人标记", ghost=True,
+                                     on_click=self.clear_bot))
         head.addWidget(common.button("去他主页看看", ghost=True, on_click=self._visit))
         head.addWidget(common.button("打开目录", ghost=True, on_click=self.open_dir))
         self.box.addLayout(head)
@@ -117,8 +119,19 @@ class UserMemoryCard(common.Card):
             except Exception:
                 pass
             label = f"{nick or 'uid=' + str(uid)}  ·  {uid}"
+            try:
+                from .. import bots
+                rec = bots.info(self.platform, uid)
+                if bots.is_bot(self.platform, uid):
+                    label += "  ⚠ 疑似机器人"
+                    item_tip = f"{lines} 条 · {p.stat().st_size} 字节"
+                    item_tip += f"\n标记原因：{rec.get('reason') or '高频互刷'}"
+                else:
+                    item_tip = f"{lines} 条 · {p.stat().st_size} 字节"
+            except Exception:
+                item_tip = f"{lines} 条 · {p.stat().st_size} 字节"
             item = QListWidgetItem(label)
-            item.setToolTip(f"{lines} 条 · {p.stat().st_size} 字节")
+            item.setToolTip(item_tip)
             item.setData(Qt.UserRole, str(p))
             item.setData(Qt.UserRole + 1, uid)
             item.setData(Qt.UserRole + 2, content)
@@ -177,8 +190,30 @@ class UserMemoryCard(common.Card):
         header = (f"<div style='color:{theme.MUTED};font-size:12px'>"
                   f"{nick}（uid={uid}） · 好感度 {favor}/100 · "
                   f"{len(text)}/{mem_limit('user')} 字</div>")
+        try:
+            from .. import bots
+            if bots.is_bot(self.platform, uid):
+                rec = bots.info(self.platform, uid)
+                header = (f"<div style='color:{theme.ERR};font-weight:700'>"
+                          f"⚠ 疑似机器人：{rec.get('reason') or '高频互刷'}"
+                          f"（标记后默认不回复，可点上方取消）</div>") + header
+        except Exception:
+            pass
         self.view.setHtml(header + "<pre style='white-space:pre-wrap'>"
                           + (text or "（空）").replace("<", "&lt;") + "</pre>")
+
+    def clear_bot(self) -> None:
+        item = self.lst.currentItem()
+        if not item:
+            return
+        uid = int(item.data(Qt.UserRole + 1) or 0)
+        try:
+            from .. import bots
+            bots.unmark(self.platform, uid)
+            common.toast(self.app, "已取消机器人标记", "ok")
+        except Exception:
+            pass
+        self.reload()
 
     def _visit(self) -> None:
         item = self.lst.currentItem()

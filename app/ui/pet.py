@@ -90,7 +90,9 @@ class PetWindow(QWidget):
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
-        self._timer.start(50)
+        self._timer.start(33)
+        self._scaled = None
+        self._scaled_key = None
         self._apply_size()
 
     # ---------- 尺寸 / 位置 ----------
@@ -99,6 +101,8 @@ class PetWindow(QWidget):
         side = self._base + self._pad * 2
         self.setFixedSize(side, side)
         self.setWindowOpacity(float(CFG.get("fish.alpha", 1.0)))
+        self._scaled = None
+        self._scaled_key = None
         self.update()
 
     def apply_settings(self) -> None:
@@ -157,9 +161,10 @@ class PetWindow(QWidget):
         seq = self._frames.get(self._cur) or []
         if seq:
             self._fcount += 1
-            if self._fcount % 4 == 0:
+            if self._fcount % 2 == 0:
                 self._fi = (self._fi + 1) % len(seq)
                 self._pix = seq[self._fi]
+                self._scaled = None
         self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
@@ -176,7 +181,12 @@ class PetWindow(QWidget):
         p.drawEllipse(ox + side // 5, oy + side - 14, side * 3 // 5, 16)
 
         if not self._pix.isNull():
-            pm = self._pix.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            key = (id(self._pix), side)
+            if self._scaled is None or self._scaled_key != key:
+                self._scaled = self._pix.scaled(
+                    side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self._scaled_key = key
+            pm = self._scaled
             p.drawPixmap(ox + (side - pm.width()) // 2, oy + (side - pm.height()), pm)
 
     # ---------- 交互 ----------

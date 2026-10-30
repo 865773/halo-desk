@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel,
                                QMainWindow, QMenu, QPushButton, QStackedWidget,
                                QSystemTrayIcon, QVBoxLayout, QWidget)
@@ -27,8 +27,29 @@ from .pet import PetWindow
 from .settings_page import SettingsPage
 from .memory_page import MemoryPage
 
-NAVS = [
-    ("home", "⌂  总览"),
+class _WallRoot(QWidget):
+    """壁纸模式下的根容器：把壁纸铺满窗口，子控件照常绘制。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._pix = QPixmap(resource("assets/wallpaper.jpg"))
+
+    def paintEvent(self, _e) -> None:  # noqa: N802
+        p = QPainter(self)
+        if not self._pix.isNull():
+            scaled = self._pix.scaled(
+                self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            x = (self.width() - scaled.width()) // 2
+            y = (self.height() - scaled.height()) // 2
+            p.drawPixmap(x, y, scaled)
+            # 白色柔化层，保证文字和按钮在任何壁纸上都看得清
+            p.fillRect(self.rect(), QColor(255, 255, 255, 150))
+        else:
+            p.fillRect(self.rect(), theme.BG2)
+        p.end()
+
+
+NAVS = [    ("home", "⌂  总览"),
     ("hlx", "▣  葫芦侠三楼"),
     ("lingjie", "◈  灵芥空间"),
     ("fish", "✿  大肥鱼"),
@@ -109,14 +130,15 @@ class MainWindow(QMainWindow):
         if ic:
             self.setWindowIcon(QIcon(ic))
 
-        root = QWidget()
+        root = _WallRoot() if getattr(theme, "WALL", False) else QWidget()
         root.setObjectName("root")
         self.setCentralWidget(root)
         lay = QHBoxLayout(root)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
-        lay.addWidget(self._build_sidebar())
+        side = self._build_sidebar()
+        lay.addWidget(side)
 
         self.stack = QStackedWidget()
         lay.addWidget(self.stack, 1)
@@ -283,7 +305,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.6 · 桌面合并版")
+        ver = QLabel("v9.7 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

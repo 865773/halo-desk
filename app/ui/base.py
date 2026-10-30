@@ -12,6 +12,8 @@ class Page(QWidget):
 
     def __init__(self, app, title: str, sub: str = ""):
         super().__init__()
+        self.setObjectName("pageShell")
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.app = app
         outer = QVBoxLayout(self)
         outer.setContentsMargins(28, 22, 24, 18)
@@ -38,7 +40,9 @@ class Page(QWidget):
         vp = area.viewport()
         if getattr(theme, "WALL", False):
             vp.setAutoFillBackground(False)
-            vp.setStyleSheet("background: transparent;")
+            vp.setObjectName("wallViewport")
+            vp.setStyleSheet(
+                "QWidget#wallViewport { background: transparent; }")
         else:
             vp.setAutoFillBackground(True)
             from PySide6.QtGui import QColor, QPalette
