@@ -140,6 +140,20 @@ class SettingsPage(Page):
             "流光壁纸：角色壁纸 + 半透明侧栏；纯白：干净白底；黑夜：深色。"
             "切换后重启完全生效。"))
         general.box.addWidget(self.autostart)
+        crow = QHBoxLayout()
+        crow.addWidget(QLabel("关闭窗口时"))
+        self.close_action = QComboBox()
+        self.close_action.addItem("每次询问", "")
+        self.close_action.addItem("最小化到托盘", "minimize")
+        self.close_action.addItem("退出程序", "quit")
+        self.close_action.setCurrentIndex(max(
+            0, self.close_action.findData(
+                str(CFG.get("general.close_action", "") or ""))))
+        self.close_action.currentIndexChanged.connect(self._change_close_action)
+        crow.addWidget(self.close_action, 1)
+        general.box.addLayout(crow)
+        general.box.addWidget(common.hint(
+            "点右上角 ✕ 时执行；最小化到托盘后消息监听和自动任务继续。"))
         self.mute_ding = QCheckBox("关闭消息提示音")
         self.mute_ding.setChecked(bool(CFG.get("general.mute_ding", False)))
         self.mute_ding.stateChanged.connect(
@@ -391,6 +405,15 @@ class SettingsPage(Page):
         else:
             common.toast(self.app, "设置失败（可能被安全软件拦截）", "err")
 
+    def _change_close_action(self, _idx: int = 0) -> None:
+        val = self.close_action.currentData() or ""
+        CFG.set("general.close_action", val)
+        CFG.save()
+        text = {"minimize": "以后关闭会最小化到托盘",
+                "quit": "以后关闭会直接退出",
+                "": "以后关闭会再次询问"}.get(val, "已保存")
+        common.toast(self.app, text, "ok")
+
     def _change_ui_mode(self, _idx: int = 0) -> None:
         mode = self.ui_mode.currentData() or "wallpaper"
         CFG.set("general.ui_mode", mode)
@@ -589,6 +612,11 @@ class SettingsPage(Page):
         self.ui_mode.setCurrentIndex(
             max(0, self.ui_mode.findData(CFG.get("general.ui_mode", "wallpaper"))))
         self.autostart.setChecked(autostart_enabled())
+        self.close_action.blockSignals(True)
+        self.close_action.setCurrentIndex(max(
+            0, self.close_action.findData(
+                str(CFG.get("general.close_action", "") or ""))))
+        self.close_action.blockSignals(False)
         self.pet_on.setChecked(bool(CFG.get("fish.pet_on", True)))
         self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))
         self.ai_provider.setCurrentIndex(
