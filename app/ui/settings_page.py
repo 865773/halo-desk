@@ -391,6 +391,8 @@ class SettingsPage(Page):
                                      on_click=self.show_reward))
         arow.addWidget(common.button("检查更新", ghost=True,
                                      on_click=self._check_update))
+        arow.addWidget(common.button("下载最新版", ghost=True,
+                                     on_click=self._open_download))
         arow.addStretch(1)
         about.box.addLayout(arow)
         about.box.addWidget(common.hint(
@@ -488,6 +490,12 @@ class SettingsPage(Page):
     def _check_update(self) -> None:
         from .. import updater
         updater.check(self.app, manual=True)
+
+    def _open_download(self) -> None:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl(
+            "https://gitee.com/guo-wenlong/halo-desk/releases/latest"))
 
     def show_reward(self) -> None:
         import os as _os

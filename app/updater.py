@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import threading
 
-from PySide6.QtCore import QObject, Qt, QUrl, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QVBoxLayout
 
@@ -119,13 +120,47 @@ def _dialog_style(dlg: QDialog) -> None:
         f"QCheckBox{{color:{fg};}}")
 
 
+class _BlockingDialog(QDialog):
+    """强制模式和普通模式都用它：强制模式屏蔽 Esc / 关闭按钮。"""
+
+    def __init__(self, parent=None, force: bool = False):
+        super().__init__(parent)
+        self.force = force
+
+    def reject(self) -> None:  # noqa: D401
+        if self.force:
+            return
+        super().reject()
+
+    def closeEvent(self, e) -> None:  # noqa: N802
+        if self.force:
+            e.ignore()
+            return
+        super().closeEvent(e)
+
+    def keyPressEvent(self, e) -> None:  # noqa: N802
+        if self.force and e.key() in (Qt.Key_Escape,):
+            e.ignore()
+            return
+        super().keyPressEvent(e)
+
+
+def _hard_quit() -> None:
+    """强制更新/退出时确保进程真的结束，不被托盘常驻拦住。"""
+    try:
+        QApplication.exit(0)
+    except Exception:
+        pass
+    QTimer.singleShot(300, lambda: os._exit(0))
+
+
 def _show_update(parent, remote: str, data: dict) -> None:
     from .ui import common
     url = str(data.get("download_url", "") or "").strip() \
-        or "https://gitee.com/guo-wenlong/halo-desk"
+        or "https://gitee.com/guo-wenlong/halo-desk/releases/latest"
     force = _truthy(data.get("update_force"))
     notes = str(data.get("notes", "") or "").strip()
-    dlg = QDialog(parent)
+    dlg = _BlockingDialog(parent, force)
     dlg.setWindowTitle("发现新版本")
     dlg.setMinimumWidth(460)
     _dialog_style(dlg)
@@ -143,33 +178,30 @@ def _show_update(parent, remote: str, data: dict) -> None:
         tip = QLabel("这是强制更新，更新完成前无法继续使用。")
         tip.setStyleSheet(f"color:{theme.WARN};")
         lay.addWidget(tip)
-    row = QHBoxLayout()
-    row.addStretch(1)
 
     def _go() -> None:
         QDesktopServices.openUrl(QUrl(url))
         dlg.accept()
         if force:
-            QApplication.quit()
+            QTimer.singleShot(400, _hard_quit)
 
-        row.addWidget(common.button("去下载", primary=True, on_click=_go))
+    row = QHBoxLayout()
+    row.addStretch(1)
+    row.addWidget(common.button("下载最新版", primary=True, on_click=_go))
     if force:
         row.addWidget(common.button("退出程序", ghost=True,
-                                    on_click=lambda: QApplication.quit()))
+                                    on_click=_hard_quit))
         dlg.setWindowFlags(dlg.windowFlags() & ~Qt.WindowCloseButtonHint)
     else:
         row.addWidget(common.button("以后再说", ghost=True,
                                     on_click=dlg.accept))
     lay.addLayout(row)
-    if force:
-        dlg.closeEvent = lambda e: e.ignore()
-        dlg.reject = lambda: None
     dlg.exec()
 
 
 def _show_announcement(parent, text: str, force: bool) -> None:
     from .ui import common
-    dlg = QDialog(parent)
+    dlg = _BlockingDialog(parent, force)
     dlg.setWindowTitle("公告")
     dlg.setMinimumWidth(440)
     _dialog_style(dlg)
@@ -188,6 +220,4 @@ def _show_announcement(parent, text: str, force: bool) -> None:
     lay.addLayout(row)
     if force:
         dlg.setWindowFlags(dlg.windowFlags() & ~Qt.WindowCloseButtonHint)
-        dlg.closeEvent = lambda e: e.ignore()
-        dlg.reject = lambda: None
     dlg.exec()

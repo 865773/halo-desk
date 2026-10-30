@@ -1,6 +1,6 @@
-version=10.13
-update_force=1
+version=10.14
+update_force=0
 announcement=
 announcement_force=0
-download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.13/HaloDesk.exe
-notes=
+download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.14/HaloDesk.exe
+notes=修复强制更新按钮、退出无响应、强制公告可跳过
