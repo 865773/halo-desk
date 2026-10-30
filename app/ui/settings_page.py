@@ -124,9 +124,8 @@ class SettingsPage(Page):
         self.autostart = QCheckBox("开机自动启动")
         self.autostart.setChecked(autostart_enabled())
         self.autostart.stateChanged.connect(self._toggle_autostart)
-        general.box.addWidget(self.autostart)
         mrow = QHBoxLayout()
-        mrow.addWidget(QLabel("界面模式"))
+        mrow.addWidget(QLabel("主题"))
         self.ui_mode = QComboBox()
         self.ui_mode.addItem("流光壁纸（默认）", "wallpaper")
         self.ui_mode.addItem("纯白模式", "light")
@@ -140,6 +139,7 @@ class SettingsPage(Page):
         general.box.addWidget(common.hint(
             "流光壁纸：角色壁纸 + 半透明侧栏；纯白：干净白底；黑夜：深色。"
             "切换后重启完全生效。"))
+        general.box.addWidget(self.autostart)
         self.skip_video = QCheckBox("跳过开场动画")
         self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
         self.skip_video.stateChanged.connect(

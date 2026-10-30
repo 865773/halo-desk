@@ -161,3 +161,17 @@ python tools\gen_prompt_docs.py  # 生成 PROMPTS.md / prompts.json
 2. 用测试账号跑 `verify_real.py`，看接口是否仍兼容；
 3. 打开界面走一遍：登录 → 测试发帖 → 逛一次社区 → 看「动态」；
 4. 改提示词前先读 `docs/PROMPTS.md`，改动作表前先读 `capabilities.py`。
+
+---
+
+## 10. v9.9 新增模块速查
+
+- `app/bots.py`：疑似机器人标记（`files/suspected_bots.json`），被标记后默认每小时最多回一次。
+- `app/memgate.py`：记忆判断，调用模型决定「值不值得存」，失败时默认保存。
+- `app/follow.py`：亲密度到阈值自动关注，启动时补齐。
+- `app/ui/splash.py`：角色启动页（逐帧 + 启动音）。
+- `app/ui/video_splash.py`：dsh-video-skin 的 boot.mp4 开场，可点击跳过。
+- `app/ui/theme.py`：三套主题 `wallpaper/light/dark`；壁纸模式用深色玻璃面板。
+- 界面模式配置：`general.ui_mode`；跳过开场视频：`general.skip_video_splash`。
+- 记忆目录：`data/账号/<平台>/<uid>/`；生活记忆仍是 `files/life.txt` 共享。
+- 防互刷配置：`auto.loop_*`、`auto.bot_skip_days`、`auto.bot_reply_min`。

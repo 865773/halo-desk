@@ -236,7 +236,27 @@ def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
         _set_globals(LIGHT)
         WALL = False
     if app is not None:
-        app.setStyleSheet(QSS)
+        qss = QSS
+        if WALL:
+            qss += (
+                "QListWidget, QListView, QTreeView, QTableWidget {"
+                " background: #101B30; color: #F4F8FF;"
+                " border: 1px solid rgba(255,255,255,0.18); }"
+                "QTextBrowser, QTextEdit, QPlainTextEdit {"
+                " background: rgba(6,12,26,0.78); color: #F4F8FF; }"
+                "QComboBox QAbstractItemView { background: #101B30;"
+                " color: #F4F8FF; selection-background-color: #2B4A7A; }"
+                "QDialog, QMessageBox { background: #0F1A2E; color: #F4F8FF; }"
+                "QDialog QLabel, QMessageBox QLabel { color: #F4F8FF; }"
+                "QMenu { background: #101B30; color: #F4F8FF; }"
+                "QMenu::item:selected { background: #2B4A7A; }"
+                "QToolTip { background: #101B30; color: #F4F8FF;"
+                " border: 1px solid rgba(255,255,255,0.2); }"
+                "QLineEdit, QSpinBox, QDoubleSpinBox {"
+                " background: rgba(6,12,26,0.72); color: #F4F8FF; }"
+                "QCheckBox { color: #F4F8FF; }"
+            )
+        app.setStyleSheet(qss)
 
 
 def card_style(radius: int = 14) -> str:

@@ -124,8 +124,18 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(6000, self._warm_names)
 
         self.setWindowTitle("大肥鱼桌面版 · 葫芦侠 + 灵芥")
-        self.resize(1120, 760)
         self.setMinimumSize(940, 640)
+        try:
+            scr = QApplication.primaryScreen().availableGeometry()
+            w = int(scr.width() * 0.82)
+            h = int(w * 9 / 16)
+            if h > int(scr.height() * 0.82):
+                h = int(scr.height() * 0.82)
+                w = int(h * 16 / 9)
+            self.resize(max(940, w), max(640, h))
+            self.move(scr.center() - self.rect().center())
+        except Exception:
+            self.resize(1120, 760)
         ic = icon_path()
         if ic:
             self.setWindowIcon(QIcon(ic))
@@ -305,7 +315,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.8 · 桌面合并版")
+        ver = QLabel("v9.9 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -627,7 +637,9 @@ class MainWindow(QMainWindow):
         dlg = QDialog(self)
         dlg.setWindowTitle("关闭大肥鱼")
         dlg.setFixedWidth(440)
-        dlg.setStyleSheet(f"QDialog{{background:{theme.BG2};}}")
+        dlg.setStyleSheet(f"QDialog{{background:{'#0F1A2E' if theme.WALL else theme.BG2};}}"
+                          f"QLabel{{color:{theme.TEXT};}}"
+                          f"QCheckBox{{color:{theme.TEXT};}}")
         lay = QVBoxLayout(dlg)
         lay.setContentsMargins(24, 22, 24, 18)
         lay.setSpacing(12)

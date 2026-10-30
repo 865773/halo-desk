@@ -126,11 +126,14 @@ class HomePage(Page):
         master = common.Card(padding=22, spacing=12)
         top = QHBoxLayout()
         top.setSpacing(16)
-        big = _avatar("鱼", theme.ACCENT2)
+        big = QLabel()
         big.setFixedSize(64, 64)
-        big.setStyleSheet(
-            f"background:{theme.ACCENT2};color:#06121F;border-radius:32px;"
-            "font-size:24px;font-weight:800;")
+        big.setAlignment(Qt.AlignCenter)
+        from ..paths import resource as _res
+        _pm = QPixmap(_res("assets/dafeiyu.png"))
+        if not _pm.isNull():
+            big.setPixmap(_pm.scaled(64, 64, Qt.KeepAspectRatioByExpanding,
+                                     Qt.SmoothTransformation))
         top.addWidget(big)
         col = QVBoxLayout()
         col.setSpacing(2)
