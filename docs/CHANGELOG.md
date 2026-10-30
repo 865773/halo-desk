@@ -1,5 +1,10 @@
 # 变更记录
 
+## v10.11 — 2026-10-30
+
+- 回退 seq 方案：/credits/transfer 的 comment_id 实际是全局 commentID，seq 只是楼层号
+- 打赏成功/失败都记录 cid+seq，方便核对到底打到哪条评论
+
 ## v10.10 — 2026-10-30
 
 - 葫芦侠打赏评论改用楼层号 seq，不再传全局 commentID（会回落到第 1 楼旧评论）

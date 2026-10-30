@@ -568,8 +568,8 @@ def main() -> int:
                  ctx={"post_id": 123, "comment_id": 456, "comment_seq": 42,
                       "title": "测试帖"})
     stips = [w for w in ht3.writes if w[0] == "tip_comment"]
-    check("葫芦侠打赏评论使用楼层号 seq",
-          bool(rs.get("done")) and bool(stips) and stips[0][1]["cid"] == 42,
+    check("葫芦侠打赏评论使用全局 commentID",
+          bool(rs.get("done")) and bool(stips) and stips[0][1]["cid"] == 456,
           stips)
 
     # ---------- 7.12 发帖板块锁死 / 形象配图 ----------

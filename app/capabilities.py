@@ -497,13 +497,11 @@ def execute(action: str, platform: str, client, target: dict | None,
             why = _safe_tip_text(payload.get("content") or "")
             cid = int((ctx or {}).get("comment_id", 0) or 0)
             seq = int((ctx or {}).get("comment_seq", 0) or 0)
-            if seq or cid:
-                # 葫芦侠 /credits/transfer 的 comment_id 实际按「楼层序号 seq」解析；
-                # 传全局 commentID 会越界，服务端回落到第 1 楼（旧评论）。
-                target_no = seq or cid
+            if cid:
+                # /credits/transfer type_id=2 的 comment_id 是全局 commentID；
+                # seq 只是楼层号，只用于日志核对，不能当 comment_id 传。
                 try:
-                    author = (client.comment_author_by_seq(pid, seq)
-                              if seq else client.comment_author(pid, cid))
+                    author = client.comment_author(pid, cid)
                 except Exception:
                     author = 0
                 want = int((ctx or {}).get("author_uid", 0) or 0)
@@ -511,11 +509,7 @@ def execute(action: str, platform: str, client, target: dict | None,
                     res["msg"] = "打赏对象对不上，已取消（避免送错人）"
                     res.update(done=done, ok=False)
                     return res
-                if not seq and not author:
-                    res["msg"] = "找不到要打赏的评论，已取消（避免送错人）"
-                    res.update(done=done, ok=False)
-                    return res
-                ok, _m = client.tip_comment(pid, target_no, score, why)
+                ok, _m = client.tip_comment(pid, cid, score, why)
             else:
                 ok, _m = client.tip(pid, score, why)
         else:
@@ -525,13 +519,19 @@ def execute(action: str, platform: str, client, target: dict | None,
             ok, _m = client.reward_publish("theme", pid, 1, why)
         if ok:
             done.append(f"送{coin}×{score}")
+            try:
+                from .debuglog import DBG
+                DBG.log("TIP", f"送{coin}成功 post={pid} cid={cid} seq={seq} "
+                                f"score={score}")
+            except Exception:
+                pass
             record("tip", f"给《{title}》送了 {score} 个{coin}", platform, pid=pid,
                    uid=tgt.get("author_uid"), reason=reason)
         else:
             try:
                 from .debuglog import DBG
-                DBG.log("TIP", f"送{coin}失败 post={pid} score={score} "
-                                f"text={why!r} err={_m!r}", "WARN")
+                DBG.log("TIP", f"送{coin}失败 post={pid} cid={cid} seq={seq} "
+                                f"score={score} text={why!r} err={_m!r}", "WARN")
             except Exception:
                 pass
             res["msg"] = f"送{coin}失败：{_m or '接口没返回成功'}"
