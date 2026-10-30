@@ -531,7 +531,7 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
            "点赞/收藏/评论，或者让你关注/取关他）。\n"
            "如果聊得来、想多了解对方，也可以用 visit_profile 去他主页翻帖子看看。\n"
            "注意：对方说「我 / 我的主页 / 我收藏的」指的是**对方自己**，要用 user_first/"
-           "user_index（收藏类目标另说）；只有说「你 / 大肥鱼」时才用 my_*。\n"
+           "user_index（收藏类目标另说）；只有说「你」时才用 my_*。\n"
            "target.kind=user_first/user_index/user 时，uid 必须填上面的对方 uid 或别人明确给的 uid。\n"
            + ("【重要】对方就是你的主人，reply 里必须自然叫一次「主人」。\n"
               if is_owner else "")

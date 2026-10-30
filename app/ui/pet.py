@@ -253,7 +253,7 @@ class PetWindow(QWidget):
         mem = memory.recent(6)
         if mem:
             parts.append("【最近的记忆】\n" + mem)
-        return "\n".join(parts)
+        return brain.apply_name("\n".join(parts))
 
     def _pat(self) -> None:
         from .. import memory

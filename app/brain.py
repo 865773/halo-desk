@@ -159,6 +159,14 @@ def _partner_doc(platform: str, uid: int, nick: str = "") -> str:
     return (f"【当前对话对象】uid {uid} 不是主人，不要叫他主人，按普通朋友语气。\n")
 
 
+def apply_name(text: str) -> str:
+    """把提示词里残留的「大肥鱼」统一换成当前名字。"""
+    name = (CFG.get("fish.name", "") or "大肥鱼").strip() or "大肥鱼"
+    if name != "大肥鱼":
+        return str(text or "").replace("大肥鱼", name)
+    return str(text or "")
+
+
 def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool = True) -> str:
     persona = persona_text()
     name = CFG.get("fish.name", "大肥鱼")
@@ -176,7 +184,7 @@ def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool 
              favor_context(platform, uid, nick)]
     if with_tools:
         parts.append(catalog_text())
-    return "\n".join(p for p in parts if p)
+    return apply_name("\n".join(p for p in parts if p))
 
 
 def catalog_text() -> str:
@@ -186,7 +194,7 @@ def catalog_text() -> str:
 
 def intent_prompt() -> str:
     persona = persona_text()
-    return "\n".join([
+    return apply_name("\n".join([
         persona,
         mood_context(),
         owner_doc(),
@@ -201,7 +209,7 @@ def intent_prompt() -> str:
         "日记不算在内；写点今天生活里真实发生的小事最容易写出好帖子。",
         '只输出一行 JSON：{"think":"你在想什么","intents":["roam"],'
         '"reason":"为什么想这么做（给人看的理由）","cat_id":0}',
-    ])
+    ]))
 
 
 def parse_decision(raw: str) -> dict:

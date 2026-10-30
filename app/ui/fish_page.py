@@ -653,7 +653,7 @@ class FishPage(Page):
         life = memory.recent_life(4)
         if life:
             parts.append("【你今天的生活】\n" + life)
-        return "\n".join(parts)
+        return brain.apply_name("\n".join(parts))
 
     def _render_chat(self) -> None:
         html = []
