@@ -1145,7 +1145,8 @@ class AutoPilot(QObject):
         if not common_ok:
             return
         from .ui.common import run_bg
-        run_bg(work, lambda _r: None, lambda _e: None)
+        run_bg(work, lambda _r: None,
+               lambda e: DBG.log("LIFE", f"生活记忆生成失败：{e}", "WARN"))
 
     # ---------- 手动触发 ----------
     def run_now(self) -> None:

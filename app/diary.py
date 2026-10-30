@@ -30,7 +30,7 @@ def gen_life(force: bool = False) -> str:
         return ""
     recent = memory.recent(14, "hlx")
     life_before = memory.recent_life(3)
-    from datetime import datetime, timedelta as _dt
+    from datetime import datetime as _dt, timedelta
     now = _dt.now()
     hour = now.hour
     if 5 <= hour < 9:
