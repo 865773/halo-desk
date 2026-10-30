@@ -620,6 +620,11 @@ class AutoPilot(QObject):
             for c in cands:
                 if done >= limit:
                     break
+                if self._loop_blocked(platform, c.get("uid", 0)):
+                    if c["cid"] not in self.state[seen_key]:
+                        self.state[seen_key].append(c["cid"])
+                    _save_state(self.state)
+                    continue
                 try:
                     self.incoming.emit(platform, c.get("nick", ""),
                                        str(c.get("text") or "")[:80])
@@ -697,6 +702,7 @@ class AutoPilot(QObject):
                     if platform == "lingjie" and c.get("key"):
                         self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
                                                  + [c["key"]])[-500:]
+                    self._loop_note(platform, c.get("uid", 0), c.get("nick", ""))
                     _save_state(self.state)
                     done += 1
                     report["replies"].append((platform, c["nick"], text))
@@ -790,6 +796,55 @@ class AutoPilot(QObject):
             memory.nudge_mood(3, platform, f"被 {nick} 夸了", owner)
         elif neg and not pos:
             memory.nudge_mood(-4, platform, f"被 {nick} 凶了", owner)
+
+    def _loop_blocked(self, platform: str, uid: int) -> bool:
+        if not CFG.get("auto.loop_guard", True):
+            return False
+        now = time.time()
+        if float(self.state.get("loop_global_mute", 0) or 0) > now:
+            return True
+        if uid:
+            return float(self.state.get(f"loop_mute_{platform}_{uid}", 0) or 0) > now
+        return False
+
+    def _loop_note(self, platform: str, uid: int, nick: str = "") -> None:
+        """记录一次回复；和同一个人高频互刷时暂停这个人一段时间。"""
+        if not CFG.get("auto.loop_guard", True):
+            return
+        now = time.time()
+        window = max(1, int(CFG.get("auto.loop_window_min", 10) or 10)) * 60
+        limit = max(3, int(CFG.get("auto.loop_limit", 7) or 7))
+        gap_sec = max(5, int(CFG.get("auto.loop_gap_sec", 25) or 25))
+        mute = max(1, int(CFG.get("auto.loop_mute_min", 20) or 20)) * 60
+        if uid:
+            key = f"loop_ts_{platform}_{uid}"
+            arr = [float(t) for t in (self.state.get(key) or [])
+                   if now - float(t) <= window]
+            arr.append(now)
+            self.state[key] = arr[-30:]
+            if len(arr) >= limit:
+                gaps = [arr[i + 1] - arr[i] for i in range(len(arr) - 1)]
+                avg = sum(gaps) / max(1, len(gaps))
+                if avg <= gap_sec:
+                    self.state[f"loop_mute_{platform}_{uid}"] = now + mute
+                    self.log.emit(f"⏸ 和 {nick or uid} 回复太频繁，疑似机器人互刷，"
+                                  f"暂停 {mute // 60} 分钟")
+                    try:
+                        record("system", f"检测到与 {nick or uid} 高频互刷，"
+                                         f"暂停回复 {mute // 60} 分钟", platform)
+                    except Exception:
+                        pass
+        gkey = "loop_global_ts"
+        garr = [float(t) for t in (self.state.get(gkey) or [])
+                if now - float(t) <= window]
+        garr.append(now)
+        self.state[gkey] = garr[-60:]
+        glimit = max(5, int(CFG.get("auto.global_reply_limit", 15) or 15))
+        if len(garr) >= glimit:
+            self.state["loop_global_mute"] = now + max(
+                1, int(CFG.get("auto.global_mute_min", 5) or 5)) * 60
+            self.log.emit("⏸ 短时间回复过多，先暂停几分钟省点额度")
+        _save_state(self.state)
 
     def _send_reply(self, platform: str, c: dict, text: str) -> tuple[bool, str]:
         from .emoji import sanitize

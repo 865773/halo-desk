@@ -138,6 +138,14 @@ class AutoPage(Page):
         self.auto_follow.stateChanged.connect(
             lambda s: (CFG.set("fish.auto_follow", bool(s)), CFG.save()))
         perms.addWidget(self.auto_follow)
+        self.loop_guard = QCheckBox("防机器人互刷")
+        self.loop_guard.setChecked(bool(CFG.get("auto.loop_guard", True)))
+        self.loop_guard.setToolTip(
+            "同一个人 10 分钟内被回复 7 次、且间隔很短，就暂停回复 20 分钟；"
+            "正常聊天一般触发不到")
+        self.loop_guard.stateChanged.connect(
+            lambda s: (CFG.set("auto.loop_guard", bool(s)), CFG.save()))
+        perms.addWidget(self.loop_guard)
         perms.addStretch(1)
         roam.box.addLayout(perms)
         self.body.addWidget(roam)
