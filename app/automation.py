@@ -897,7 +897,8 @@ class AutoPilot(QObject):
     def _roam_tick(self) -> None:
         if self._roam_busy or not CFG.get("roam.enabled", False):
             return
-        if not CFG.get("hlx.key", "") or not CFG.get("ai.key", ""):
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")) \
+                or not CFG.get("ai.key", ""):
             return
         interval = max(1, int(CFG.get("roam.interval_min", 20) or 20)) * 60
         if time.time() - self.last_roam < interval:
@@ -998,12 +999,14 @@ class AutoPilot(QObject):
         if self._roam_busy:
             self.log.emit("↩ 上一轮逛社区还没结束，先等等")
             return
-        if not CFG.get("hlx.key", ""):
-            self.log.emit("✗ 逛社区需要先登录葫芦侠")
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            self.log.emit("✗ 逛社区需要先登录葫芦侠或灵芥")
             return
         if not CFG.get("ai.key", ""):
             self.log.emit("✗ 逛社区需要先配置 DeepSeek Key")
             return
+        platform = "hlx" if CFG.get("hlx.key", "") else "lingjie"
+        client = self.hlx if platform == "hlx" else self.lj
         self._roam_busy = True
         self.last_roam = time.time()
         self.state["last_roam_ts"] = self.last_roam
@@ -1013,8 +1016,8 @@ class AutoPilot(QObject):
 
         def work(_e):
             from .roam import roam_once
-            return roam_once(self.hlx, steps, dry_run=dry_run,
-                             log=lambda s: self.log.emit(s))
+            return roam_once(client, steps, dry_run=dry_run,
+                             log=lambda s: self.log.emit(s), platform=platform)
 
         def done(summary):
             self._roam_busy = False
@@ -1025,7 +1028,7 @@ class AutoPilot(QObject):
                     "、".join(a["acts"]) if isinstance(a, dict) else str(a) for a in acts[:5])
             self.log.emit(msg)
             DBG.log("ROAM", msg)
-            record("system", msg, "hlx")
+            record("system", msg, platform)
             self.state_changed.emit()
 
         def fail(msg):

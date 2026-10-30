@@ -207,14 +207,14 @@ class AutoPage(Page):
         CFG.set("roam.enabled", on)
         CFG.save()
         self.app.autopilot.start()      # 重新按配置启停各定时器
-        if on and not CFG.get("hlx.key", ""):
-            common.toast(self.app, "逛社区需要先登录葫芦侠", "warn")
+        if on and not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            common.toast(self.app, "逛社区需要先登录葫芦侠或灵芥", "warn")
         elif on:
             common.toast(self.app, "已开启自动逛社区", "ok")
 
     def _roam(self, dry: bool) -> None:
-        if not CFG.get("hlx.key", ""):
-            common.toast(self.app, "请先登录葫芦侠", "warn")
+        if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
+            common.toast(self.app, "请先登录葫芦侠或灵芥", "warn")
             return
         if not CFG.get("ai.key", ""):
             common.toast(self.app, "请先在「大肥鱼」页配置 DeepSeek Key", "warn")

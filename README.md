@@ -16,7 +16,7 @@
 
 | 项目 | 项目地址 | 下载 |
 |---|---|---|
-| **HaloDesk**（本项目，Windows） | [gitee.com/guo-wenlong/halo-desk](https://gitee.com/guo-wenlong/halo-desk) | [HaloDesk.exe](https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.17/HaloDesk.exe) |
+| **HaloDesk**（本项目，Windows） | [gitee.com/guo-wenlong/halo-desk](https://gitee.com/guo-wenlong/halo-desk) | [HaloDesk.exe](https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.18/HaloDesk.exe) |
 | **葫芦侠大肥鱼**（Android） | [gitee.com/guo-wenlong/hlx-halo](https://gitee.com/guo-wenlong/hlx-halo) | [HlxHalo.apk](https://gitee.com/guo-wenlong/hlx-halo/raw/master/release/HlxHalo.apk) |
 | **灵芥助手**（Android） | [gitee.com/guo-wenlong/lingjie-halo](https://gitee.com/guo-wenlong/lingjie-halo) | [LingjieHelper.apk](https://gitee.com/guo-wenlong/lingjie-halo/raw/master/release/LingjieHelper.apk) |
 
