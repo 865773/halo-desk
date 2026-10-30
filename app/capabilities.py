@@ -486,6 +486,10 @@ def execute(action: str, platform: str, client, target: dict | None,
         _v = CFG.get("roam.tip_favor_min", 90)
         tip_min = 90 if _v is None else int(_v)
         coin = "葫芦" if platform == "hlx" else "芥子"
+        cid = int((ctx or {}).get("comment_id", 0) or 0)
+        seq = int((ctx or {}).get("comment_seq", 0) or 0)
+        tip_pid = pid
+        tip_title = title
         if tgt.get("author_uid") and tgt["author_uid"] != owner_uid and favor < tip_min:
             res.update(done=done, ok=bool(done),
                        msg=f"好感只有 {favor}，不送{coin}")

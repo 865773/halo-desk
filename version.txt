@@ -1,6 +1,6 @@
-version=10.18
+version=10.19
 update_force=0
 announcement=
 announcement_force=0
-download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.18/HaloDesk.exe
-notes=手动逛社区/试运行支持只登录一个平台
+download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.19/HaloDesk.exe
+notes=修复单平台手动逛社区，并修正灵芥打赏标题变量

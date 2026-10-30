@@ -358,7 +358,7 @@ def main() -> int:
     # ---------- 5.5 跨社区切换 ----------
     hlx6, lj6 = FakeHlx(), FakeLj()
     seq = iter(["switch_community", "stay", "stay", "stay"])
-    brain.choose_switch = lambda board: (next(seq, "stay"), "想去灵芥看看大大王")
+    brain.choose_switch = lambda board, **kw: (next(seq, "stay"), "想去灵芥看看大大王")
     s6 = roam.roam_session(max_steps=1, dry_run=False, log=lambda _m: None,
                            hlx=hlx6, lj=lj6)
     segs = [x["platform"] for x in s6.get("segments", [])]
@@ -366,7 +366,7 @@ def main() -> int:
     check("换社区有决策理由",
           any("换到" in d["text"] and d.get("reason") for d in s6.get("decisions", [])),
           s6.get("decisions", [])[:2])
-    brain.choose_switch = lambda board: ("switch_board", "换个板块")
+    brain.choose_switch = lambda board, **kw: ("switch_board", "换个板块")
 
     # ---------- 6. 日记草稿 ----------
     res = diary.write_diary("hlx", 2, "闲聊", dry_run=True, client=FakeHlx())
@@ -546,7 +546,8 @@ def main() -> int:
     ht = FakeHlx()
     CFG.set("roam.tip_favor_min", 0)
     rh = execute("tip_post", "hlx", ht, {"kind": "current", "uid": 60},
-                 {"reason": "测试", "score": 9}, ctx={"post_id": 123, "title": "测试帖"})
+                 {"reason": "测试", "score": 9},
+                 ctx={"post_id": 123, "comment_id": 456, "title": "测试帖"})
     htips = [w for w in ht.writes if w[0] == "tip"]
     check("葫芦侠送葫芦会清洗空理由并限制分数",
           bool(rh.get("done")) and bool(htips)
