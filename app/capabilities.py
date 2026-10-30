@@ -405,7 +405,7 @@ def execute(action: str, platform: str, client, target: dict | None,
         if not text:
             try:
                 text = ai.ask("用一句 15~40 字的自然口语评论这条帖子，不要 AI 腔。",
-                              f"标题：{title}", CFG.get("ai.model_basic"))
+                              f"标题：{title}", None)
                 text = " ".join((text or "").split())[:120]
             except Exception:
                 text = ""
@@ -541,7 +541,7 @@ def reply_with_action(platform: str, client, message: dict, ctx: dict) -> dict:
     from .net import json_of
     for _ in range(2):
         try:
-            raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
+            raw = ai.ask(sys, ask, None)
         except Exception as e:
             DBG.log("ACT", f"回复决策失败：{e}", "ERROR")
             continue

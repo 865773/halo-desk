@@ -76,7 +76,7 @@ def gen_life(force: bool = False) -> str:
             + (f"可以自然补充一两句宅家/出门的细节（比如{place_hint}）。"
                if place_hint else ""),
             (timeline or recent or "这段时间没发生什么特别的事。").strip(),
-            CFG.get("ai.model_basic"))
+            None)
     except Exception as e:
         DBG.log("LIFE", f"生成生活记录失败：{e}", "WARN")
         return ""
@@ -138,7 +138,7 @@ def write_diary(platform: str = "hlx", board_id: int = 0, board_name: str = "",
         '只输出一行 JSON：{"title":"20字内标题","content":"正文"}'
     )
     try:
-        raw = ai.ask(prompt, "开始写吧。", CFG.get("ai.model_basic"))
+        raw = ai.ask(prompt, "开始写吧。", None)
     except Exception as e:
         res["msg"] = f"生成失败：{e}"
         return res

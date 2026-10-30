@@ -759,7 +759,7 @@ class AutoPilot(QObject):
         from .net import json_of
         for _ in range(2):
             try:
-                raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
+                raw = ai.ask(sys, ask, None)
             except Exception as e:
                 DBG.log("AI", f"生成回复失败：{e}", "ERROR")
                 continue

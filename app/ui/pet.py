@@ -227,7 +227,7 @@ class PetWindow(QWidget):
 
         def work(_e):
             return ai.ask(system, "主人摸了摸你的头。用一句话回应，10-25字，口语。", 
-                          CFG.get("ai.model_basic"))
+                          None)
 
         def done(text):
             text = (text or "").strip()

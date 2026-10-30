@@ -14,6 +14,9 @@ class AIError(Exception):
     pass
 
 
+_LOGGED_MODELS: set[str] = set()
+
+
 def is_custom() -> bool:
     return (CFG.get("ai.provider", "deepseek") or "deepseek") == "custom"
 
@@ -78,6 +81,14 @@ def chat(messages: list[dict], model: Optional[str] = None,
     body = {"model": model, "messages": messages,
             "temperature": temperature, "stream": bool(stream)}
     url = _url("/chat/completions")
+    try:
+        global _LOGGED_MODELS
+        if model not in _LOGGED_MODELS:
+            _LOGGED_MODELS.add(model)
+            DBG.log("AI", f"使用模型：{model}"
+                    f"（{'自定义接口' if is_custom() else 'DeepSeek 官方'}）")
+    except Exception:
+        pass
     if not stream:
         text = net.post_json(url, body, _headers(), timeout=timeout)
         obj = net.json_of(text)

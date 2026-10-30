@@ -23,7 +23,7 @@ def compose_post(board_name: str, hint: str) -> tuple[str, str]:
            "你正在社区「" + board_name + "」发一条日常帖：像真人随手发动态，"
            "口语、自然，不要 AI 腔，不要 markdown。只输出一行 JSON："
            '{"title":"标题（20字内）","content":"正文（60-150字，可带[表情]）"}')
-    text = ai.ask(sys, hint or "发一条今天的日常吧", CFG.get("ai.model_basic"))
+    text = ai.ask(sys, hint or "发一条今天的日常吧", None)
     obj = json_of(text)
     title = (obj.get("title") or "").strip()
     content = (obj.get("content") or "").strip()

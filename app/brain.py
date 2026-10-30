@@ -56,10 +56,24 @@ def format_doc() -> str:
             "actions 里只能出现上面卡片里的动作名；不需要的字段省略。")
 
 
-def persona_text() -> str:
-    """人设文本；如果改了名字，把旧名字「大肥鱼」统一替换成新名字。"""
+def persona_template() -> str:
+    """给编辑框看的人设模板：把当前名字/默认形象还原成 {name}/{appearance}。"""
+    from .persona import DEFAULT_APPEARANCE
     p = CFG.get("fish.persona", "") or DEFAULT_PERSONA
     name = (CFG.get("fish.name", "") or "大肥鱼").strip() or "大肥鱼"
+    if name and name != "大肥鱼":
+        p = p.replace(name, "{name}")
+    p = p.replace(DEFAULT_APPEARANCE, "{appearance}")
+    return p
+
+
+def persona_text() -> str:
+    """人设文本：{name} / {appearance} 用当前配置填充，旧名字也会被替换。"""
+    from .persona import DEFAULT_APPEARANCE
+    p = CFG.get("fish.persona", "") or DEFAULT_PERSONA
+    name = (CFG.get("fish.name", "") or "大肥鱼").strip() or "大肥鱼"
+    appearance = (CFG.get("fish.appearance", "") or "").strip() or DEFAULT_APPEARANCE
+    p = p.replace("{name}", name).replace("{appearance}", appearance)
     if name != "大肥鱼":
         p = p.replace("大肥鱼", name)
     return p
@@ -214,7 +228,7 @@ def decide(platform: str, state: str, uid: int = 0, nick: str = "",
                 raw = ai.chat_with_images(sys, ask + "\n【配图】已附上帖子图片。",
                                           images, ai.model_vision())
             else:
-                raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
+                raw = ai.ask(sys, ask, None)
         except Exception as e:
             DBG.log("BRAIN", f"决策失败：{e}", "ERROR")
             continue
@@ -232,7 +246,7 @@ def decide_intent() -> dict:
     for _ in range(2):
         try:
             raw = ai.ask(intent_prompt(), "现在你想干什么？自己定。",
-                         CFG.get("ai.model_basic"))
+                         None)
         except Exception as e:
             DBG.log("BRAIN", f"意图决策失败：{e}", "ERROR")
             return {}

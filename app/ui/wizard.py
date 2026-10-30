@@ -261,8 +261,8 @@ class Wizard(QDialog):
         self.name_edit.setText(cfg.get("fish.name", "大肥鱼"))
         self.tags_edit.setText(cfg.get("fish.tags", ""))
         self.appear_edit.setPlainText(cfg.get("fish.appearance", ""))
-        from ..persona import DEFAULT_PERSONA
-        self.persona_edit.setPlainText(cfg.get("fish.persona", "") or DEFAULT_PERSONA)
+        from .. import brain as _brain
+        self.persona_edit.setPlainText(_brain.persona_template())
         self.interval.setValue(int(cfg.get("fish.interval_min", 20) or 20))
         self.limit_hlx.setValue(int(cfg.get("autopost.daily_limit_hlx", 2) or 2))
         self.limit_lj.setValue(int(cfg.get("autopost.daily_limit_lingjie", 2) or 2))

@@ -228,9 +228,11 @@ class FishPage(Page):
         row.addWidget(reset)
         card.box.addLayout(row)
         self.persona_edit = QPlainTextEdit()
-        self.persona_edit.setPlainText(CFG.get("fish.persona", "") or persona.DEFAULT_PERSONA)
+        self.persona_edit.setPlainText(brain.persona_template())
         self.persona_edit.setMinimumHeight(170)
         card.box.addWidget(self.persona_edit)
+        card.box.addWidget(common.hint(
+            "可用变量：{name} = 名字，{appearance} = 形象；保存后运行时会自动替换。"))
         save = common.button("保存人设", primary=True)
         save.clicked.connect(self.save_persona)
         row2 = QHBoxLayout()
@@ -691,7 +693,7 @@ class FishPage(Page):
 
         def work(_e):
             from .. import ai
-            return ai.ask(system, text, CFG.get("ai.model_basic"))
+            return ai.ask(system, text, None)
 
         def done(reply):
             self.send_btn.setEnabled(True)

@@ -219,6 +219,11 @@ class SettingsPage(Page):
             "深度思考模型（可选）：只用于逛社区决策、长记忆压缩；留空=不用")
         self.think_model.editingFinished.connect(self._save_ai)
         ai.box.addWidget(self.think_model)
+        from .. import ai as _ai
+        self.ai_models_lb = common.hint(
+            f"当前日常模型：{_ai.model_basic()}；看图：{_ai.model_vision()}；"
+            f"思考：{_ai.model_think()}（留空=同日常）")
+        ai.box.addWidget(self.ai_models_lb)
         self._sync_ai_boxes()
         trow = QHBoxLayout()
         trow.addWidget(common.button("测试 AI", primary=True, on_click=self._test_ai))
@@ -561,6 +566,10 @@ class SettingsPage(Page):
         self.ai_cmodel.setText(CFG.get("ai.custom_model", ""))
         self.ai_cvision.setText(CFG.get("ai.custom_vision", ""))
         self.think_model.setText(CFG.get("ai.think_model", ""))
+        from .. import ai as _ai
+        self.ai_models_lb.setText(
+            f"当前日常模型：{_ai.model_basic()}；看图：{_ai.model_vision()}；"
+            f"思考：{_ai.model_think()}（留空=同日常）")
         cur = CFG.get("fish.img_proto", "dashscope")
         self.img_proto.setCurrentIndex(max(0, self.img_proto.findData(cur)))
         self.img_url.setText(CFG.get("fish.img_url", ""))
