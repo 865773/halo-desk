@@ -1,5 +1,5 @@
 version=10.14
-update_force=0
+update_force=1
 announcement=
 announcement_force=0
 download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.13/HaloDesk.exe
