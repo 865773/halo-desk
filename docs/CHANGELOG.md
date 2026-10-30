@@ -11,7 +11,6 @@
 - 新增匿名安装统计：Gitee lingjie-misc 仓库 halodesk.dat，双 Base64
 - 新增检查更新/公告：version.txt 后台控制，支持强制更新/强制公告
 - 设置「关于」加入两个 Android 项目的下载直链和项目地址
-- 新增 docs/ADMIN_PROMPT.md，给手机 AGI 生成后台管理 App
 - 清理 tools 里的本机绝对路径和个人示例数据，避免上传隐私
 
 ## v10.5 — 2026-10-30
@@ -61,7 +60,7 @@
 - 主窗口启动尺寸与开场视频一致（屏幕 82%，16:9），不再播完突然缩小
 - 总览头像从「鱼」字换成角色图片
 - 疑似机器人改为降频：被标记后每小时最多回一次，不再完全不回
-- 新增 PROJECT_TREE.md、PROMO.md；README 重写并补上预览图
+- 新增 PROJECT_TREE.md；README 重写并补上预览图
 - 修复 Gitee 上 README 预览图打不开（图片未提交）
 
 ## v9.8 — 2026-10-30

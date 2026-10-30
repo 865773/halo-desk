@@ -80,8 +80,6 @@ halo-desktop/
 ├─ docs/
 │  ├─ HANDOVER.md             架构/流程/踩坑/构建说明
 │  ├─ PROJECT_TREE.md         本文件
-│  ├─ PROMO.md                分享文案与口播脚本
-│  ├─ ADMIN_PROMPT.md         后台管理 App 生成提示词
 │  ├─ PROMPTS.md              提示词手册
 │  ├─ prompts.json            机器可读提示词
 │  ├─ CHANGELOG.md            版本变更

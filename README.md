@@ -9,7 +9,6 @@
 - 默认「流光壁纸」主题，可切纯白 / 黑夜
 
 ![总览](docs/preview-home.png)
-![流光壁纸](docs/wallpaper_glass.png)
 
 ---
 
@@ -130,8 +129,6 @@ data/
 |---|---|
 | [docs/HANDOVER.md](docs/HANDOVER.md) | 架构、模块、关键流程、构建、测试 |
 | [docs/PROJECT_TREE.md](docs/PROJECT_TREE.md) | 完整项目树与每个目录作用 |
-| [docs/PROMO.md](docs/PROMO.md) | 抖音/其他平台的介绍文案与口播脚本 |
-| [docs/ADMIN_PROMPT.md](docs/ADMIN_PROMPT.md) | 给手机 AGI 的后台管理 App 生成提示词 |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | 提示词清单与变量 |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | 版本变更记录 |
 
