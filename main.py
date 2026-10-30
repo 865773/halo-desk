@@ -78,12 +78,33 @@ def main() -> int:
 
     win = MainWindow()
     splash = None
+    video_splash = None
+
+    def _show_main() -> None:
+        win.show()
+        win.raise_()
+        win.activateWindow()
+        if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
+            from PySide6.QtCore import QTimer
+            from app.ui.wizard import Wizard
+            QTimer.singleShot(500, lambda: Wizard(win).exec())
+
     if "--selftest" not in sys.argv:
         from app.ui.splash import Splash
+
         splash = Splash()
-        splash.finished.connect(win.show)
-        splash.finished.connect(win.raise_)
-        splash.finished.connect(win.activateWindow)
+
+        def _after_splash() -> None:
+            if CFG.get("general.skip_video_splash", False):
+                _show_main()
+                return
+            from app.ui.video_splash import VideoSplash
+            nonlocal video_splash
+            video_splash = VideoSplash()
+            video_splash.finished.connect(_show_main)
+            video_splash.start()
+
+        splash.finished.connect(_after_splash)
         splash.start()
     else:
         win.show()
@@ -101,18 +122,6 @@ def main() -> int:
             win.activateWindow()
 
         server.newConnection.connect(_another)
-    if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
-        from PySide6.QtCore import QTimer
-        from app.ui.wizard import Wizard
-
-        def _wizard() -> None:
-            if splash is not None:
-                splash.finished.connect(lambda: QTimer.singleShot(
-                    400, lambda: Wizard(win).exec()))
-            else:
-                QTimer.singleShot(600, lambda: Wizard(win).exec())
-
-        _wizard()
     if "--selftest" in sys.argv:
         from PySide6.QtCore import QTimer
 

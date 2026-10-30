@@ -276,7 +276,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.3 · 桌面合并版")
+        ver = QLabel("v9.4 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
@@ -594,30 +594,53 @@ class MainWindow(QMainWindow):
         if saved == "quit":
             self.quit()
             return
-        from PySide6.QtWidgets import QCheckBox, QMessageBox
-        box = QMessageBox(self)
-        box.setWindowTitle("关闭大肥鱼")
-        box.setText("要最小化到托盘继续后台运行，还是直接退出？")
-        remember = QCheckBox("记住我的选择")
-        box.setCheckBox(remember)
-        b_min = box.addButton("最小化到托盘", QMessageBox.AcceptRole)
-        b_quit = box.addButton("退出程序", QMessageBox.DestructiveRole)
-        box.addButton("取消", QMessageBox.RejectRole)
-        box.exec()
-        action = ""
-        if box.clickedButton() is b_min:
-            action = "minimize"
-        elif box.clickedButton() is b_quit:
-            action = "quit"
-        if remember.isChecked() and action:
-            CFG.set("general.close_action", action)
+        from PySide6.QtWidgets import QCheckBox, QDialog, QHBoxLayout, QLabel, QVBoxLayout
+        dlg = QDialog(self)
+        dlg.setWindowTitle("关闭大肥鱼")
+        dlg.setFixedWidth(440)
+        dlg.setStyleSheet(f"QDialog{{background:{theme.BG2};}}")
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(24, 22, 24, 18)
+        lay.setSpacing(12)
+        title = QLabel("要让大肥鱼继续待在后台吗？")
+        title.setStyleSheet(f"font-size:16px;font-weight:700;color:{theme.TEXT};")
+        lay.addWidget(title)
+        desc = QLabel("最小化到托盘：消息监听、自动回复、签到都会继续。\n"
+                      "退出程序：所有自动任务立即停止。")
+        desc.setWordWrap(True)
+        desc.setStyleSheet(f"color:{theme.MUTED};font-size:12px;line-height:160%;")
+        lay.addWidget(desc)
+        remember = QCheckBox("记住我的选择，下次不再问")
+        lay.addWidget(remember)
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        row.addStretch(1)
+        action = {"v": ""}
+
+        def pick(value: str) -> None:
+            action["v"] = value
+            dlg.accept()
+
+        b_cancel = common.button("取消", ghost=True, on_click=lambda: pick(""))
+        b_quit = common.button("退出程序", ghost=True, on_click=lambda: pick("quit"))
+        b_quit.setStyleSheet(f"color:{theme.ERR};")
+        b_min = common.button("最小化到托盘", primary=True,
+                              on_click=lambda: pick("minimize"))
+        row.addWidget(b_cancel)
+        row.addWidget(b_quit)
+        row.addWidget(b_min)
+        lay.addLayout(row)
+        dlg.exec()
+        act = action["v"]
+        if remember.isChecked() and act:
+            CFG.set("general.close_action", act)
             CFG.save()
-        if action == "minimize":
+        if act == "minimize":
             self.hide()
             self.tray.showMessage("大肥鱼还在后台运行",
                                   "点托盘图标可以再打开，右键菜单可以退出。",
                                   QSystemTrayIcon.Information, 2000)
-        elif action == "quit":
+        elif act == "quit":
             self.quit()
 
     def changeEvent(self, e) -> None:  # noqa: N802

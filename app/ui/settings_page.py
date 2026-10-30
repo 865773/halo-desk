@@ -129,6 +129,13 @@ class SettingsPage(Page):
         self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
         self.dark.stateChanged.connect(self._toggle_dark)
         general.box.addWidget(self.dark)
+        self.skip_video = QCheckBox("跳过开场视频（保留原启动页）")
+        self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
+        self.skip_video.stateChanged.connect(
+            lambda s: (CFG.set("general.skip_video_splash", bool(s)), CFG.save()))
+        general.box.addWidget(self.skip_video)
+        general.box.addWidget(common.hint(
+            "只跳过 dsh-video-skin 的开场短片；原来的角色启动页仍会显示。"))
         general.box.addWidget(common.hint(
             "默认浅色；打开黑夜模式后重启程序完全生效。"))
         general.box.addWidget(common.hint(
@@ -555,6 +562,7 @@ class SettingsPage(Page):
     def refresh(self) -> None:
         """从配置重新读一遍，避免向导改完这里还显示旧值。"""
         self.dark.setChecked(bool(CFG.get("general.dark_mode", False)))
+        self.skip_video.setChecked(bool(CFG.get("general.skip_video_splash", False)))
         self.autostart.setChecked(autostart_enabled())
         self.pet_on.setChecked(bool(CFG.get("fish.pet_on", True)))
         self.pet_size.setValue(int(CFG.get("fish.size", 150) or 150))
