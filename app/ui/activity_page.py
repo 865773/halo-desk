@@ -34,6 +34,68 @@ KIND_COLOR_LIGHT = {
     "system": "#475569",
 }
 
+ACTION_CN = {
+    "visit_profile": "去对方主页看看",
+    "follow_user": "关注对方",
+    "unfollow_user": "取消关注",
+    "like_post": "点赞帖子",
+    "unlike_post": "取消点赞",
+    "favorite_post": "收藏帖子",
+    "unfavorite_post": "取消收藏",
+    "comment_post": "评论帖子",
+    "reply_comment": "回复评论",
+    "tip_post": "打赏",
+    "publish_post": "发帖",
+    "sign_in": "签到",
+    "nothing": "什么都不做",
+    "post_like": "点赞",
+    "post_favorite": "收藏",
+    "post_comment": "评论",
+    "post_like_comment": "点赞、评论",
+    "post_like_favorite": "点赞、收藏",
+    "post_favorite_comment": "收藏、评论",
+    "post_like_favorite_comment": "点赞、收藏、评论",
+}
+
+
+def humanize(text: str) -> str:
+    """把动作代码翻译成真实目的，方便看动态。"""
+    s = str(text or "")
+    if not s:
+        return s
+    import re
+
+    def _cn(code: str) -> str:
+        return ACTION_CN.get(code, code)
+
+    # 看《标题》→ 决定 post_like_comment
+    m = re.match(r"^看《(.+?)》\s*→\s*决定\s*([a-z_]+)", s)
+    if m:
+        rest = s[m.end():]
+        return f"打开《{m.group(1)}》，打算{_cn(m.group(2))}{rest}"
+    # 决定回复 X：内容（visit_profile）
+    m = re.match(r"^决定回复\s*([^：:]+)[：:](.*)$", s)
+    if m:
+        tail = m.group(2)
+        code = ""
+        mm = re.search(r"（([a-z_]+)）\s*$", tail)
+        if mm:
+            code = mm.group(1)
+            tail = tail[:mm.start()].rstrip()
+        extra = "" if code in ("", "nothing") else f"，顺便{_cn(code)}"
+        return f"回复了 {m.group(1).strip()}：{tail}{extra}"
+    # 决定 X / 决定去做 X
+    m = re.match(r"^决定\s*([a-z_]+)\s*(.*)$", s)
+    if m:
+        return f"打算{_cn(m.group(1))}{m.group(2)}"
+    # 括号里的代码
+    s = re.sub(r"（([a-z_]+)）", lambda mm: f"（{_cn(mm.group(1))}）", s)
+    # 一些常见叙述换成更直白的说法
+    s = re.sub(r"去\s*uid=(\d+)\s*的主页看了帖子", r"去 TA（uid=\1）的主页逛了逛", s)
+    s = re.sub(r"去\s*@([^\s的]+)\s*的主页看了帖子", r"去 @\1 的主页逛了逛", s)
+    s = re.sub(r"（(\d+) 个动作）", r"，做了 \1 件事", s)
+    return s
+
 
 def _title_of(text: str) -> str:
     m = re.search(r"《(.+?)》", text or "")
@@ -142,6 +204,7 @@ class ActivityPage(Page):
             else:
                 base = extra_text or head.get("text", "")
                 base = re.sub(r"（理由：.*?）$", "", base)
+                base = humanize(base)
                 head_line = f"<span style='color:{theme.TEXT}'>{base}</span>"
             chips = ""
             if actions:
