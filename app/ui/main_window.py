@@ -188,8 +188,6 @@ class MainWindow(QMainWindow):
         self._login_timer.setInterval(30000)
         self._login_timer.timeout.connect(lambda: self._check_logins(quiet=True))
         self._login_timer.start()
-        QTimer.singleShot(4500, self._check_update)
-        QTimer.singleShot(7000, self._report_usage)
         self._ui_timer = QTimer(self)
         self._ui_timer.setInterval(20000)
         self._ui_timer.timeout.connect(self._light_refresh)

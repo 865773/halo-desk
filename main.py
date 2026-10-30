@@ -93,6 +93,12 @@ def main() -> int:
             from PySide6.QtCore import QTimer
             from app.ui.wizard import Wizard
             QTimer.singleShot(500, lambda: Wizard(win).exec())
+        if "--selftest" not in sys.argv:
+            from PySide6.QtCore import QTimer
+            from app import telemetry, updater
+            QTimer.singleShot(5000, telemetry.report_async)
+            if not CFG.get("general.first_run", True):
+                QTimer.singleShot(3500, lambda: updater.check(win, manual=False))
 
     def _prepare_main_behind(vs) -> None:
         """先把主界面铺在视频下面，视频淡出时直接露出主界面，不再闪桌面。"""
