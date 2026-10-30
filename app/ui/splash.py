@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import (QEasingCurve, QPointF, QPropertyAnimation, QRect,
+from PySide6.QtCore import (QEasingCurve, QPointF, QPropertyAnimation,
                             QRectF, Qt, QTimer, Signal)
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
@@ -50,17 +50,9 @@ class Splash(QWidget):
 
     def start(self) -> None:
         screen = self.screen()
-        self._target = None
         if screen:
             g = screen.availableGeometry()
             self.move(g.center() - self.rect().center())
-            w = int(g.width() * 0.82)
-            h = int(w * 9 / 16)
-            if h > int(g.height() * 0.82):
-                h = int(g.height() * 0.82)
-                w = int(h * 16 / 9)
-            self._target = QRect(g.center().x() - w // 2,
-                                 g.center().y() - h // 2, w, h)
         self.setWindowOpacity(0.0)
         self.show()
         self._close_timer.start()
@@ -73,33 +65,35 @@ class Splash(QWidget):
         self.update()
         if self._tick >= self._total:
             self._close_timer.stop()
-            # 先停一下，再用很短的动画放大，避免看见明显的拉伸
-            self._grow_delay = QTimer(self)
-            self._grow_delay.setSingleShot(True)
-            self._grow_delay.setInterval(900)
-            self._grow_delay.timeout.connect(self._grow)
-            self._grow_delay.start()
-
-    def _grow(self) -> None:
-        """把小启动页放大到开场视频的窗口大小，再交给视频。"""
-        if not getattr(self, "_target", None):
             self._done()
-            return
-        self._anim = QPropertyAnimation(self, b"geometry", self)
-        self._anim.setDuration(110)
-        self._anim.setStartValue(self.geometry())
-        self._anim.setEndValue(self._target)
-        self._anim.setEasingCurve(QEasingCurve.OutQuint)
-        self._anim.finished.connect(self._done)
-        self._anim.start()
 
     def _done(self) -> None:
         if getattr(self, "_finished", False):
             return
         self._finished = True
-        self.hide()
         self.finished.emit()
-        QTimer.singleShot(30, self.deleteLater)
+        # 主界面会用开场视频交叉淡入；这里保底清理
+        QTimer.singleShot(700, self._cleanup)
+
+    def fade_out(self, ms: int = 260) -> None:
+        """和开场视频交叉淡出，不再做几何放大。"""
+        try:
+            self._fade = QPropertyAnimation(self, b"windowOpacity", self)
+            self._fade.setDuration(ms)
+            self._fade.setStartValue(self.windowOpacity())
+            self._fade.setEndValue(0.0)
+            self._fade.setEasingCurve(QEasingCurve.InOutQuad)
+            self._fade.finished.connect(self._cleanup)
+            self._fade.start()
+        except Exception:
+            self._cleanup()
+
+    def _cleanup(self) -> None:
+        try:
+            self.hide()
+            self.deleteLater()
+        except Exception:
+            pass
 
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)

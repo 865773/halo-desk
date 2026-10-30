@@ -114,13 +114,29 @@ def main() -> int:
         def _after_splash() -> None:
             if CFG.get("general.skip_video_splash", False):
                 _show_main()
+                try:
+                    splash.fade_out(220)
+                except Exception:
+                    pass
                 return
             from app.ui.video_splash import VideoSplash
-            from PySide6.QtCore import QTimer
+            from PySide6.QtCore import QPropertyAnimation, QTimer
             nonlocal video_splash
             video_splash = VideoSplash()
             video_splash.finished.connect(_show_main)
+            video_splash.setWindowOpacity(0.0)
             video_splash.start()
+            # 启动页和视频交叉淡入淡出，不做几何放大
+            try:
+                anim = QPropertyAnimation(video_splash, b"windowOpacity", video_splash)
+                anim.setDuration(260)
+                anim.setStartValue(0.0)
+                anim.setEndValue(1.0)
+                anim.start()
+                video_splash._fade_in = anim
+                splash.fade_out(260)
+            except Exception:
+                video_splash.setWindowOpacity(1.0)
             QTimer.singleShot(100, lambda: _prepare_main_behind(video_splash))
 
         splash.finished.connect(_after_splash)

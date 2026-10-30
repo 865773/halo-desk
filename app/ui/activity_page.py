@@ -202,12 +202,26 @@ class ActivityPage(Page):
                     if not actions and not extra_text:
                         extra_text = text
             plat = PLATFORM_LABEL.get(head.get("platform", ""), "")
+            kind = head.get("kind", "")
             dark = theme.is_dark()
-            if dark:
-                color = KIND_COLOR.get(head.get("kind", ""), theme.ACCENT)
+            if theme.WALL:
+                # 壁纸模式统一成低饱和玻璃色，避免彩虹标签
+                row_bg = "#0F1B2C"
+                chip_bg = "#1B2C47"
+                color = "#D7E4F8"
+                if kind == "decision":
+                    chip_bg = "#21406B"
+                    color = "#BBD3FF"
+                elif kind == "error":
+                    chip_bg = "#3A1E24"
+                    color = "#FFB4B4"
+            elif dark:
+                row_bg = theme.CARD2
+                color = KIND_COLOR.get(kind, theme.ACCENT)
                 chip_bg = "#1B2942"
             else:
-                color = KIND_COLOR_LIGHT.get(head.get("kind", ""), theme.ACCENT)
+                row_bg = theme.CARD2
+                color = KIND_COLOR_LIGHT.get(kind, theme.ACCENT)
                 chip_bg = theme.SEL
             if title:
                 head_line = (f"<span style='color:{theme.TEXT};font-weight:700'>《{title}》</span>")
@@ -225,13 +239,13 @@ class ActivityPage(Page):
                             if comment else "")
             reason_html = (f"<div style='color:{theme.MUTED};font-size:11px;margin-top:2px'>"
                            f"理由：{reason}</div>" if reason else "")
-            is_decision = head.get("kind") == "decision"
+            is_decision = kind == "decision"
             tag_text = "大肥鱼" if is_decision else (plat or "大肥鱼")
             tag = (f"<span style='background:{chip_bg};color:{color};"
                    f"border-radius:6px;padding:1px 6px;font-size:10px'>"
                    f"{tag_text}</span> ")
             rows.append(
-                f"<div style='margin:6px 0;padding:8px 10px;background:{theme.CARD2};"
+                f"<div style='margin:6px 0;padding:8px 10px;background:{row_bg};"
                 f"border-radius:8px'>"
                 f"<span style='color:{theme.MUTED};font-size:11px'>{head.get('ts','')}</span> "
                 f"{tag}{head_line} {chips}{comment_html}{reason_html}</div>")
