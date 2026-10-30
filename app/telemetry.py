@@ -102,6 +102,32 @@ def install_id() -> str:
     return val
 
 
+def _accounts() -> list[dict]:
+    """当前登录的两个平台账号（uid + 昵称），用于按账号统计。"""
+    out = []
+    try:
+        hlx_uid = int(CFG.get("hlx.uid", 0) or 0)
+        if hlx_uid > 0:
+            out.append({
+                "platform": "葫芦侠",
+                "uid": hlx_uid,
+                "nickname": str(CFG.get("hlx.nick", "") or ""),
+            })
+    except Exception:
+        pass
+    try:
+        lj_uid = int(CFG.get("lingjie.uid", 0) or 0)
+        if lj_uid > 0:
+            out.append({
+                "platform": "灵芥",
+                "uid": lj_uid,
+                "nickname": str(CFG.get("lingjie.nickname", "") or ""),
+            })
+    except Exception:
+        pass
+    return out
+
+
 def report_async(log=None) -> None:
     """启动后异步上报一次；24 小时内不重复。"""
     try:
@@ -110,12 +136,17 @@ def report_async(log=None) -> None:
             return
     except Exception:
         pass
+    if not _accounts():
+        return
     threading.Thread(target=_report, args=(log,), daemon=True).start()
 
 
 def _report(log=None) -> None:
     try:
         iid = install_id()
+        accounts = _accounts()
+        if not accounts:
+            return
         url = (_API + STATS_REPO + "/contents/" + STATS_FILE
                + "?access_token=" + urllib.parse.quote(token()))
         sha = ""
@@ -127,17 +158,29 @@ def _report(log=None) -> None:
                 arr = _decode_stats(str(obj["content"]))
         except Exception:
             pass
-        if any(isinstance(x, dict) and x.get("id") == iid for x in arr):
+        changed = False
+        for acc in accounts:
+            exists = any(
+                isinstance(x, dict)
+                and x.get("platform") == acc["platform"]
+                and int(x.get("uid", 0) or 0) == acc["uid"]
+                for x in arr)
+            if exists:
+                continue
+            arr.append({
+                "id": iid,
+                "platform": acc["platform"],
+                "uid": acc["uid"],
+                "nickname": acc["nickname"],
+                "version": VERSION,
+                "device": f"Windows {platform.release()} / {platform.machine()}",
+                "first": time.strftime("%Y-%m-%d %H:%M"),
+            })
+            changed = True
+        if not changed:
             CFG.set("general.stats_at", time.time())
             CFG.save()
             return
-        arr.append({
-            "id": iid,
-            "platform": "windows",
-            "version": VERSION,
-            "device": f"Windows {platform.release()} / {platform.machine()}",
-            "first": time.strftime("%Y-%m-%d %H:%M"),
-        })
         content = _encode_stats(arr)
         body = {
             "access_token": token(),

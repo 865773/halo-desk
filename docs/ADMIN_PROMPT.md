@@ -42,9 +42,10 @@ JSON 数组 --Base64--> 文件文本 --Base64--> PUT 的 content 字段
 - 手机端（`hlx.dat` / `lingjie.dat`）：
   `uid: Long`、`nickname: String`、`device: String`、`first: String`
 - 桌面端（`halodesk.dat`）：
-  `id: String`（安装 id）、`platform: String`、`version: String`、`device: String`、`first: String`
+  `id: String`（安装 id）、`platform: String`（葫芦侠 / 灵芥）、
+  `uid: Long`、`nickname: String`、`version: String`、`device: String`、`first: String`
 
-去重规则：手机按 `uid`，桌面按 `id`。
+去重规则：手机按 `uid`；桌面按 `platform + uid`，同一安装的两个平台账号各算一条。
 
 ## 四、统计看板
 

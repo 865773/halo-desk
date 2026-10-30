@@ -1,5 +1,11 @@
 # 变更记录
 
+## v10.7 — 2026-10-30
+
+- 统计改成按账号上报：葫芦侠 / 灵芥各自的 uid、用户名、版本、设备
+- exe 上传到 Gitee 仓库 release/HaloDesk.exe，下载地址改为 exe 直链
+- 更新 version.txt 与 README 下载链接
+
 ## v10.6 — 2026-10-30
 
 - 新增匿名安装统计：Gitee lingjie-misc 仓库 halodesk.dat，双 Base64
