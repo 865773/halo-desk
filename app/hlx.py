@@ -402,6 +402,12 @@ class HlxClient:
 
     def tip(self, post_id: int, score: int, text: str) -> tuple[bool, str]:
         """给帖子送葫芦。"""
+        import re as _re
+        score = max(1, min(5, int(score or 1)))
+        text = _re.sub(r"\[[^\]]{1,10}\]", "", str(text or ""))
+        text = _re.sub(r"\s+", " ", text).strip()[:10]
+        if len(text) < 4:
+            text = "谢谢你分享"
         raw = (f"_key{self.key}device_code{DEV_RAW}post_id{post_id}"
                f"score{score}score_txt{text}")
         sign = md5(raw + SECRET)

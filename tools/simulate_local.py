@@ -133,6 +133,11 @@ class FakeHlx:
         self.writes.append(("tip", {"pid": pid, "score": score, "text": text}))
         return True, ""
 
+    def tip_comment(self, pid, cid, score, text):
+        self.writes.append(("tip_comment", {"pid": pid, "cid": cid,
+                                            "score": score, "text": text}))
+        return True, ""
+
     def signin(self, cat):
         self.writes.append(("signin", {"cat": cat}))
         return True, ""
@@ -531,6 +536,25 @@ def main() -> int:
     check("灵芥送芥子一次 1 个",
           bool(rt.get("done")) and rewards and rewards[0][1]["amount"] == 1,
           rewards)
+
+    ht = FakeHlx()
+    CFG.set("roam.tip_favor_min", 0)
+    rh = execute("tip_post", "hlx", ht, {"kind": "current", "uid": 60},
+                 {"reason": "测试", "score": 9}, ctx={"post_id": 123, "title": "测试帖"})
+    htips = [w for w in ht.writes if w[0] == "tip"]
+    check("葫芦侠送葫芦会清洗空理由并限制分数",
+          bool(rh.get("done")) and bool(htips)
+          and bool(htips[0][1]["text"].strip())
+          and 1 <= htips[0][1]["score"] <= 1,
+          htips)
+
+    ht2 = FakeHlx()
+    rc = execute("tip_post", "hlx", ht2, {"kind": "current", "uid": 60},
+                 {"reason": "回复打赏", "score": 1},
+                 ctx={"post_id": 123, "comment_id": 456, "title": "测试帖"})
+    ctips = [w for w in ht2.writes if w[0] == "tip_comment"]
+    check("葫芦侠回复场景会打赏评论而不是帖子",
+          bool(rc.get("done")) and bool(ctips), ctips)
 
     # ---------- 7.12 发帖板块锁死 / 形象配图 ----------
     class _FB:

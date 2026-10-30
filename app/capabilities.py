@@ -247,6 +247,15 @@ def _perm(name: str, default: bool = True) -> bool:
     return bool(CFG.get(f"perm.{name}", default))
 
 
+def _safe_tip_text(text: str) -> str:
+    """葫芦侠的 score_txt 对换行/表情/超长很敏感，统一清洗成一句短话。"""
+    import re
+    s = re.sub(r"\[[^\]]{1,10}\]", "", str(text or ""))
+    s = re.sub(r"[\r\n\t]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()[:10]
+    return s if len(s) >= 4 else "谢谢你分享"
+
+
 def execute(action: str, platform: str, client, target: dict | None,
             payload: dict | None = None, ctx: dict | None = None,
             log=print) -> dict:
@@ -483,21 +492,32 @@ def execute(action: str, platform: str, client, target: dict | None,
             return res
         if platform == "hlx":
             score = max(1, min(5, int(payload.get("score", 1) or 1)))
-            why = (payload.get("content") or "").strip()
-            if len(why) < 5:
-                why = "谢谢你一直陪我说话"
-            ok, _m = client.tip(pid, score, why)
+            if tgt.get("author_uid") and tgt["author_uid"] != owner_uid:
+                score = 1       # 和手机端一致：不是主人只送 1 个
+            why = _safe_tip_text(payload.get("content") or "")
+            cid = int((ctx or {}).get("comment_id", 0) or 0)
+            if cid:
+                # 回复场景和手机端一致：打赏「正在回复的这条评论」
+                ok, _m = client.tip_comment(pid, cid, score, why)
+            else:
+                ok, _m = client.tip(pid, score, why)
         else:
             # 灵芥的芥子一次只能 1 个，理由 10 字以内
             score = 1
-            why = (payload.get("content") or "").strip()[:10] or "喜欢"
+            why = _safe_tip_text(payload.get("content") or "")[:10] or "喜欢这个主题"
             ok, _m = client.reward_publish("theme", pid, 1, why)
         if ok:
             done.append(f"送{coin}×{score}")
             record("tip", f"给《{title}》送了 {score} 个{coin}", platform, pid=pid,
                    uid=tgt.get("author_uid"), reason=reason)
         else:
-            res["msg"] = f"送{coin}失败"
+            try:
+                from .debuglog import DBG
+                DBG.log("TIP", f"送{coin}失败 post={pid} score={score} "
+                                f"text={why!r} err={_m!r}", "WARN")
+            except Exception:
+                pass
+            res["msg"] = f"送{coin}失败：{_m or '接口没返回成功'}"
 
     if done:
         memory.nudge_mood(1)
