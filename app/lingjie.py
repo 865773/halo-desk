@@ -7,6 +7,7 @@ import time
 from typing import Callable, Optional
 
 from . import net
+from .authwords import is_auth_bad
 from .config import CFG
 from .debuglog import DBG
 
@@ -49,6 +50,7 @@ def jwt_uid(token: str) -> int:
 class LingjieClient:
     def __init__(self, cfg=CFG):
         self.cfg = cfg
+        self.auth_issue = ""
 
     @property
     def token(self) -> str:
@@ -74,7 +76,9 @@ class LingjieClient:
         t0 = time.time()
         text = net.http(url, headers=self._headers(auth), timeout=timeout)
         _log_http("GET", path, t0, text)
-        return net.json_of(text)
+        obj = net.json_of(text)
+        self._note_auth(obj)
+        return obj
 
     def _post(self, path: str, fields: Optional[dict] = None, auth: bool = True,
               timeout: float = 25) -> dict:
@@ -82,7 +86,14 @@ class LingjieClient:
         t0 = time.time()
         text = net.post_form(url, fields or {}, self._headers(auth), timeout)
         _log_http("POST", path, t0, text)
-        return net.json_of(text)
+        obj = net.json_of(text)
+        self._note_auth(obj)
+        return obj
+
+    def _note_auth(self, obj: dict) -> None:
+        msg = str(obj.get("msg") or obj.get("message") or "")
+        if is_auth_bad(msg):
+            self.auth_issue = msg
 
     @staticmethod
     def _ok(obj: dict) -> bool:
@@ -146,12 +157,23 @@ class LingjieClient:
         except Exception:
             return False
 
+    def login_state(self) -> tuple[str, str]:
+        """返回 (ok|invalid|blocked|unknown, 服务端原因)；网络错误会抛异常。"""
+        if not self.token:
+            return "invalid", "未登录"
+        st = self.sign_status(1)
+        msg = str(st.get("msg") or st.get("message") or "")
+        if is_auth_bad(msg):
+            return "blocked", msg
+        if self._ok(st) or bool(st.get("data")):
+            return "ok", ""
+        if msg:
+            return "invalid", msg
+        return "unknown", "登录状态无法确认"
+
     def probe_login(self) -> bool:
         """只判断登录态；网络错误会抛异常，避免把断网当成失效。"""
-        if not self.token:
-            return False
-        st = self.sign_status(1)
-        return self._ok(st) or bool(st.get("data"))
+        return self.login_state()[0] == "ok"
 
     # ---------- 用户 ----------
     def me(self) -> dict:

@@ -641,28 +641,30 @@ class MainWindow(QMainWindow):
             out = {}
             try:
                 if CFG.get("hlx.key", ""):
-                    out["hlx"] = bool(self.hlx.probe_login())
-            except Exception:
-                out["hlx"] = True
+                    out["hlx"] = self.hlx.login_state()
+            except Exception as e:
+                out["hlx"] = ("unknown", f"网络异常：{e}")
             try:
                 if CFG.get("lingjie.token", ""):
-                    out["lj"] = bool(self.lj.probe_login())
-            except Exception:
-                out["lj"] = True
+                    out["lj"] = self.lj.login_state()
+            except Exception as e:
+                out["lj"] = ("unknown", f"网络异常：{e}")
             return out
 
         def done(res):
             self._login_checking = False
             bad = []
-            if res.get("hlx") is False:
+            hlx_state, hlx_msg = res.get("hlx", ("unknown", ""))
+            lj_state, lj_msg = res.get("lj", ("unknown", ""))
+            if hlx_state in ("blocked", "invalid"):
                 for k in ("hlx.key", "hlx.uid", "hlx.nick", "hlx.level"):
                     CFG.set(k, "" if k.endswith("key") or k.endswith("nick") else 0)
-                bad.append("葫芦侠")
-            if res.get("lj") is False:
+                bad.append(("葫芦侠", hlx_msg or "登录已失效"))
+            if lj_state in ("blocked", "invalid"):
                 for k in ("lingjie.token", "lingjie.uid", "lingjie.nickname",
                           "lingjie.level", "lingjie.exp", "lingjie.next_exp"):
                     CFG.set(k, "" if k in ("lingjie.token", "lingjie.nickname") else 0)
-                bad.append("灵芥")
+                bad.append(("灵芥", lj_msg or "登录已失效"))
             if bad:
                 if not (CFG.get("hlx.key", "") or CFG.get("lingjie.token", "")):
                     CFG.set("fish.enabled", False)
@@ -673,13 +675,14 @@ class MainWindow(QMainWindow):
                         pass
                 CFG.save()
                 self.notify_accounts()
-                msg = ("、".join(bad) + " 的登录已失效，请重新登录。\n"
-                       "该账号的记忆仍然保留，登录后会恢复。")
-                DBG.log("LOGIN", "登录失效：" + "、".join(bad), "WARN")
+                detail = "；".join(f"{n}：{m}" for n, m in bad)
+                msg = (detail + "\n\n该账号已退出登录，请重新登录。\n"
+                       "账号的记忆仍然保留，登录后会恢复。")
+                DBG.log("LOGIN", "登录失效：" + detail, "WARN")
                 if quiet:
                     try:
                         self.tray.showMessage("登录已失效", msg,
-                                              QSystemTrayIcon.Warning, 5000)
+                                              QSystemTrayIcon.Warning, 6000)
                     except Exception:
                         pass
                 else:

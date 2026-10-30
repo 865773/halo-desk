@@ -293,6 +293,7 @@ class AutoPilot(QObject):
         self.lj = LingjieClient(CFG)
         self.state = _load_state()
         self._busy = False
+        self._auth_hits = {}
 
         # 消息监听：默认 10 秒一轮（和 Android 版一致）
         self.poll_timer = QTimer(self)
@@ -580,6 +581,20 @@ class AutoPilot(QObject):
     # ---------- 自动回复 ----------
     def _reply_pass(self, platform: str, report: dict) -> None:
         try:
+            # 任何接口带回来的「风险/封禁/重新登录」提示，都在这里处理；
+            # 连续 2 次命中才退出，避免代理/网络误判把正常账号踢掉。
+            for _p, _c in (("hlx", self.hlx), ("lj", self.lj)):
+                _issue = getattr(_c, "auth_issue", "")
+                if _issue:
+                    _c.auth_issue = ""
+                    _now = time.time()
+                    _last, _cnt = self._auth_hits.get(_p, (0, 0))
+                    _cnt = _cnt + 1 if _now - _last < 300 else 1
+                    self._auth_hits[_p] = (_now, _cnt)
+                    DBG.log("LOGIN", f"{_p} 接口异常登录态（{_cnt}/2）：{_issue}", "WARN")
+                    if _cnt >= 2:
+                        self._auth_hits[_p] = (0, 0)
+                        self.auth_failed.emit(_p)
             since = int(self.state.get("connect_ts", 0) or 0)
             if platform == "hlx":
                 if not CFG.get("hlx.key", ""):

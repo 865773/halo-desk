@@ -7,6 +7,7 @@ import time
 from typing import Callable, Optional
 
 from . import net
+from .authwords import is_auth_bad
 from .config import CFG
 from .debuglog import DBG
 
@@ -48,6 +49,7 @@ class HlxError(Exception):
 class HlxClient:
     def __init__(self, cfg=CFG):
         self.cfg = cfg
+        self.auth_issue = ""
 
     # ---------- 基础 ----------
     @property
@@ -85,9 +87,12 @@ class HlxClient:
         _log_http("POST", url, t0, text)
         return text
 
-    @staticmethod
-    def _json(text: str) -> dict:
-        return net.json_of(text)
+    def _json(self, text: str) -> dict:
+        obj = net.json_of(text)
+        msg = str(obj.get("msg") or "")
+        if is_auth_bad(msg):
+            self.auth_issue = msg
+        return obj
 
     # ---------- 登录 ----------
     def login(self, account: str, password: str) -> dict:
@@ -129,12 +134,24 @@ class HlxClient:
         except Exception:
             return False
 
+    def login_state(self) -> tuple[str, str]:
+        """返回 (ok|invalid|blocked|unknown, 服务端原因)；网络错误会抛异常。"""
+        if not self.key:
+            return "invalid", "未登录"
+        obj = self._json(self._get(f"{BASE}/user/status/ANDROID/2.1?{self.auth()}"))
+        st = int(obj.get("status", 0) or 0)
+        msg = str(obj.get("msg") or "")
+        if is_auth_bad(msg):
+            return "blocked", msg
+        if st == 1:
+            return "ok", ""
+        if is_auth_bad(msg):
+            return "invalid", msg
+        return "unknown", msg or f"status={st}"
+
     def probe_login(self) -> bool:
         """只判断登录态；网络错误会抛异常，避免把断网当成失效。"""
-        if not self.key:
-            return False
-        obj = self._json(self._get(f"{BASE}/user/status/ANDROID/2.1?{self.auth()}"))
-        return int(obj.get("status", 0) or 0) == 1
+        return self.login_state()[0] == "ok"
 
     def logout(self) -> None:
         for k in ("key", "uid", "nick", "avatar", "level"):

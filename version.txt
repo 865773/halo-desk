@@ -1,6 +1,6 @@
-version=10.15
+version=10.16
 update_force=0
 announcement=
 announcement_force=0
-download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.15/HaloDesk.exe
-notes=统计改为按设备记录，设备下保存所有账号和最后上线时间
+download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.16/HaloDesk.exe
+notes=登录异常检测：账号风险/封禁/重新登录会自动退出，网络异常不误踢
