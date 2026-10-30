@@ -380,6 +380,9 @@ def execute(action: str, platform: str, client, target: dict | None,
                    uid=tgt.get("author_uid"), reason=reason)
             REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
             time.sleep(random.uniform(0.8, 1.8))
+        else:
+            res["msg"] = ("已经点过赞了，跳过"
+                          if pid in _liked_set(platform) else "点赞失败（接口没返回成功）")
     if "favorite" in bits:
         if _do_favorite(platform, client, pid):
             done.append("收藏")
@@ -387,6 +390,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                    uid=tgt.get("author_uid"), reason=reason)
             REL.add(platform, tgt.get("author_uid", 0), 1, tgt.get("author", ""))
             time.sleep(random.uniform(0.8, 1.8))
+        else:
+            res["msg"] = "收藏失败（可能已经收藏过）"
     if "comment" in bits:
         try:
             if client.has_my_comment(pid):
@@ -410,8 +415,7 @@ def execute(action: str, platform: str, client, target: dict | None,
             text = _san_emoji(text, platform)
             ok, _m = _do_comment(platform, client, pid, text)
             if ok:
-                # 发完查一下是否立刻可见；看不到就是进审核了
-                visible = True
+                # 发完查一下是否立刻可见；看不到就是进审核了                visible = True
                 try:
                     time.sleep(2.0)
                     visible = bool(client.has_my_comment(pid))
@@ -449,6 +453,10 @@ def execute(action: str, platform: str, client, target: dict | None,
                     pass
                 from . import names
                 names.set_name(platform, tgt.get("author_uid", 0), tgt.get("author", ""))
+            else:
+                res["msg"] = f"评论失败：{_m or '接口没返回成功'}"
+        else:
+            res["msg"] = "评论失败：没有生成评论内容"
     if "follow" in bits and tgt.get("author_uid"):
         ok_f, _why_f = _do_follow(platform, client, tgt["author_uid"])
         if ok_f:
@@ -459,6 +467,8 @@ def execute(action: str, platform: str, client, target: dict | None,
                             f"@{tgt.get('author') or 'uid=' + str(tgt.get('author_uid'))}",
                             platform=platform)
             REL.add(platform, tgt.get("author_uid", 0), 3, tgt.get("author", ""))
+        else:
+            res["msg"] = f"关注失败：{_why_f or '接口没返回成功'}"
 
     if spec.get("need_tip"):
         owner_uid = int(CFG.get(f"fish.owner_uid_{platform}", 0)
