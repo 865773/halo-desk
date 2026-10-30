@@ -299,8 +299,12 @@ def _choose(prompt: str, options: list[str], default: str,
 
 
 def choose_community(available: list[str]) -> tuple[str, str]:
-    """决定去哪个社区逛。"""
+    """决定去哪个社区逛。只有一个登录时，不再把「选择社区」交给模型。"""
     names = {"hlx": "葫芦侠三楼", "lingjie": "灵芥空间"}
+    if not available:
+        return "hlx", ""
+    if len(available) == 1:
+        return available[0], "另一个社区没登录，直接逛这个"
     opts = [names[x] for x in available]
     ask = "你现在想去哪个社区逛逛？"
     try:
@@ -349,11 +353,16 @@ def choose_count() -> tuple[int, str]:
         return 2, why
 
 
-def choose_switch(board_name: str) -> tuple[str, str]:
-    """看完一个帖子后的去向：换板块 / 换社区 / 继续。"""
+def choose_switch(board_name: str, allow_community: bool = True) -> tuple[str, str]:
+    """看完一个帖子后的去向：换板块 / 换社区 / 继续。
+    另一个社区没登录时，不把「换社区」放进选项。
+    """
+    opts = ["换板块", "继续逛这个板块"]
+    if allow_community:
+        opts.insert(1, "换社区")
     choice, why = _choose(
         f"你在「{board_name}」看完一个帖子了，接下来想：",
-        ["换板块", "换社区", "继续逛这个板块"], "换板块", think=True)
+        opts, "换板块", think=True)
     mapping = {"换板块": "switch_board", "换社区": "switch_community",
                "继续逛这个板块": "stay"}
     return mapping.get(choice, "switch_board"), why

@@ -356,10 +356,13 @@ def roam_once(client, max_steps: int = 3, dry_run: bool = False, log=print,
                  seen, commented, dry_run, log)
         viewed += 1
 
-        nxt, why_s = brain.choose_switch(board_name)
+        other = "lingjie" if platform == "hlx" else "hlx"
+        other_logged = bool(CFG.get("lingjie.token", "")
+                            if other == "lingjie" else CFG.get("hlx.key", ""))
+        nxt, why_s = brain.choose_switch(board_name,
+                                         allow_community=other_logged)
         if nxt == "switch_community":
-            other = "lingjie" if platform == "hlx" else "hlx"
-            logged = CFG.get("lingjie.token", "") if other == "lingjie" else CFG.get("hlx.key", "")
+            logged = other_logged
             if logged:
                 _record(summary, platform,
                         f"想换到{PLATFORM_NAME[other]}看看" + (f"：{why_s}" if why_s else ""),
