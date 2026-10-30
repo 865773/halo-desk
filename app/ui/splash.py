@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import (QEasingCurve, QPointF, QPropertyAnimation, QRect,
+                            QRectF, Qt, QTimer, Signal)
 from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPixmap
 from PySide6.QtWidgets import QWidget
 
@@ -19,7 +20,7 @@ class Splash(QWidget):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
-        self.setFixedSize(560, 340)
+        self.resize(560, 340)
         self._frames = []
         for i in range(16):
             pm = QPixmap(resource(f"assets/pet/shenshen/idle_{i}.png"))
@@ -49,9 +50,17 @@ class Splash(QWidget):
 
     def start(self) -> None:
         screen = self.screen()
+        self._target = None
         if screen:
             g = screen.availableGeometry()
             self.move(g.center() - self.rect().center())
+            w = int(g.width() * 0.82)
+            h = int(w * 9 / 16)
+            if h > int(g.height() * 0.82):
+                h = int(g.height() * 0.82)
+                w = int(h * 16 / 9)
+            self._target = QRect(g.center().x() - w // 2,
+                                 g.center().y() - h // 2, w, h)
         self.setWindowOpacity(0.0)
         self.show()
         self._close_timer.start()
@@ -64,15 +73,39 @@ class Splash(QWidget):
         self.update()
         if self._tick >= self._total:
             self._close_timer.stop()
-            self.hide()
-            self.finished.emit()
-            QTimer.singleShot(30, self.deleteLater)
+            self._grow()
+
+    def _grow(self) -> None:
+        """把小启动页放大到开场视频的窗口大小，再交给视频。"""
+        if not getattr(self, "_target", None):
+            self._done()
+            return
+        self._anim = QPropertyAnimation(self, b"geometry", self)
+        self._anim.setDuration(260)
+        self._anim.setStartValue(self.geometry())
+        self._anim.setEndValue(self._target)
+        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim.finished.connect(self._done)
+        self._anim.start()
+
+    def _done(self) -> None:
+        if getattr(self, "_finished", False):
+            return
+        self._finished = True
+        self.hide()
+        self.finished.emit()
+        QTimer.singleShot(30, self.deleteLater)
 
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        rect = QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        base_w, base_h = 560.0, 340.0
+        s = min(self.width() / base_w, self.height() / base_h)
+        p.translate((self.width() - base_w * s) / 2,
+                    (self.height() - base_h * s) / 2)
+        p.scale(s, s)
+        rect = QRectF(0, 0, base_w, base_h).adjusted(1, 1, -1, -1)
         g = QLinearGradient(rect.topLeft(), rect.bottomRight())
         if theme.is_dark():
             g.setColorAt(0, QColor("#0B1220"))
@@ -93,25 +126,25 @@ class Splash(QWidget):
             pm = self._frames[self._fi]
             side = 190
             pm = pm.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            x = (self.width() - pm.width()) / 2
+            x = (base_w - pm.width()) / 2
             p.drawPixmap(QPointF(x, 26), pm)
 
         # 名字
         f = QFont("Microsoft YaHei UI", 22, QFont.Bold)
         p.setFont(f)
         p.setPen(QColor(text))
-        p.drawText(QRectF(0, 210, self.width(), 36), Qt.AlignCenter, self._name)
+        p.drawText(QRectF(0, 210, base_w, 36), Qt.AlignCenter, self._name)
 
         # 副标题
         p.setFont(QFont("Microsoft YaHei UI", 9))
         p.setPen(QColor(sub))
-        p.drawText(QRectF(0, 246, self.width(), 22), Qt.AlignCenter,
+        p.drawText(QRectF(0, 246, base_w, 22), Qt.AlignCenter,
                    "HALO DESK · 葫芦侠三楼 × 灵芥空间")
 
         # 进度条
         ratio = min(1.0, self._tick / float(self._total))
         bar_w = 240
-        bx = (self.width() - bar_w) / 2
+        bx = (base_w - bar_w) / 2
         by = 288
         p.setBrush(QColor(theme.LINE))
         p.drawRoundedRect(QRectF(bx, by, bar_w, 4), 2, 2)
