@@ -72,6 +72,11 @@ class VideoSplash(QWidget):
             self.move(g.center() - self.rect().center())
         self.show()
         self.raise_()
+        try:
+            from . import common as _common
+            _common.round_window(self)
+        except Exception:
+            pass
         self.player.play()
         self._timer.start()
 

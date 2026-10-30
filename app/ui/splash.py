@@ -60,8 +60,6 @@ class Splash(QWidget):
         self._tick += 1
         self._fi = (self._tick // 2) % max(1, len(self._frames))
         op = min(1.0, self._tick / 8.0)
-        if self._tick > self._total - 8:
-            op = max(0.0, (self._total - self._tick) / 8.0)
         self.setWindowOpacity(op)
         self.update()
         if self._tick >= self._total:

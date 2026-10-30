@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from ..config import CFG
+from PySide6.QtCore import Qt
 
 LIGHT = {
     "BG": "#F6F8FB", "BG2": "#FFFFFF", "CARD": "#FFFFFF", "CARD2": "#F2F5FA",
@@ -261,6 +262,42 @@ def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
                 "QCheckBox { color: #F4F8FF; }"
             )
         app.setStyleSheet(qss)
+
+
+def install_popup_fixer(app) -> None:
+    """去掉 QComboBox 下拉弹层自带的白色边框/白底。"""
+    from PySide6.QtCore import QEvent, QObject
+
+    class _Fixer(QObject):
+        def eventFilter(self, obj, e):
+            if e.type() == QEvent.Show and WALL:
+                try:
+                    cn = obj.metaObject().className()
+                    if "ComboBoxPrivateContainer" in cn:
+                        from PySide6.QtGui import QColor, QPalette
+                        from PySide6.QtWidgets import QAbstractItemView, QFrame
+                        obj.setAttribute(Qt.WA_TranslucentBackground, False)
+                        obj.setFrameShape(QFrame.NoFrame)
+                        obj.setAutoFillBackground(True)
+                        pal = obj.palette()
+                        pal.setColor(QPalette.Window, QColor("#101B30"))
+                        pal.setColor(QPalette.Base, QColor("#101B30"))
+                        obj.setPalette(pal)
+                        obj.setStyleSheet("background:#101B30;border:none;")
+                        view = obj.findChild(QAbstractItemView)
+                        if view is not None:
+                            view.setFrameShape(QFrame.NoFrame)
+                            view.setStyleSheet(
+                                "QAbstractItemView{background:#101B30;border:none;padding:0px;}"
+                                "QAbstractItemView::item{border:none;padding:4px 8px;}"
+                                "QAbstractItemView::item:selected{"
+                                "background:#2B4A7A;color:#FFFFFF;border:none;}")
+                except Exception:
+                    pass
+            return False
+
+    app._popup_fixer = _Fixer(app)
+    app.installEventFilter(app._popup_fixer)
 
 
 def card_style(radius: int = 14) -> str:

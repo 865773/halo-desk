@@ -55,6 +55,7 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(False)
     app.setStyle("Fusion")
     theme.apply(app, CFG.get("general.ui_mode", "wallpaper"))
+    theme.install_popup_fixer(app)
     app.setFont(QFont("Microsoft YaHei UI", 9))
 
     ic = icon_path()
@@ -81,44 +82,29 @@ def main() -> int:
     video_splash = None
 
     def _show_main() -> None:
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(80, _really_show)
-
-    def _really_show() -> None:
-        from PySide6.QtCore import Qt
-        win.setWindowOpacity(0.0)
-        # 启动时短暂置顶，避免别的窗口压在刚启动的 app 上面
-        win.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        win.show()
-        win.raise_()
-        win.activateWindow()
         try:
-            from PySide6.QtCore import QPropertyAnimation
-            anim = QPropertyAnimation(win, b"windowOpacity", win)
-            anim.setDuration(260)
-            anim.setStartValue(0.0)
-            anim.setEndValue(1.0)
-            anim.start()
-            win._fade_anim = anim
-        except Exception:
             win.setWindowOpacity(1.0)
-
-        def _drop_top() -> None:
-            try:
-                win.setWindowFlag(Qt.WindowStaysOnTopHint, False)
-                win._rounded = False
-                win.show()
-                win.raise_()
-                win.activateWindow()
-            except Exception:
-                pass
-
-        from PySide6.QtCore import QTimer as _QT
-        _QT.singleShot(900, _drop_top)
+            win.show()
+            win.raise_()
+            win.activateWindow()
+        except Exception:
+            pass
         if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
             from PySide6.QtCore import QTimer
             from app.ui.wizard import Wizard
             QTimer.singleShot(500, lambda: Wizard(win).exec())
+
+    def _prepare_main_behind(vs) -> None:
+        """先把主界面铺在视频下面，视频淡出时直接露出主界面，不再闪桌面。"""
+        try:
+            win.setWindowOpacity(1.0)
+            win.show()
+            win.raise_()
+            win.activateWindow()
+            vs.raise_()
+            vs.activateWindow()
+        except Exception:
+            pass
 
     if "--selftest" not in sys.argv:
         from app.ui.splash import Splash
@@ -130,10 +116,12 @@ def main() -> int:
                 _show_main()
                 return
             from app.ui.video_splash import VideoSplash
+            from PySide6.QtCore import QTimer
             nonlocal video_splash
             video_splash = VideoSplash()
             video_splash.finished.connect(_show_main)
             video_splash.start()
+            QTimer.singleShot(100, lambda: _prepare_main_behind(video_splash))
 
         splash.finished.connect(_after_splash)
         splash.start()

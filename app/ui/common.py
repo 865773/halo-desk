@@ -69,6 +69,20 @@ def line() -> QFrame:
     return f
 
 
+def round_window(widget) -> None:
+    """Windows 11 系统圆角，用于启动页/开场视频等无边框窗口。"""
+    try:
+        import ctypes
+        import sys
+        if not sys.platform.startswith("win"):
+            return
+        v = ctypes.c_int(2)
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            int(widget.winId()), 33, ctypes.byref(v), ctypes.sizeof(v))
+    except Exception:
+        pass
+
+
 def dark_viewport(widget) -> None:
     """壁纸模式下把列表/文本区的视口也刷成深色，去掉白边。"""
     from . import theme
