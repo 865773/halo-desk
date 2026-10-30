@@ -56,6 +56,15 @@ def format_doc() -> str:
             "actions 里只能出现上面卡片里的动作名；不需要的字段省略。")
 
 
+def persona_text() -> str:
+    """人设文本；如果改了名字，把旧名字「大肥鱼」统一替换成新名字。"""
+    p = CFG.get("fish.persona", "") or DEFAULT_PERSONA
+    name = (CFG.get("fish.name", "") or "大肥鱼").strip() or "大肥鱼"
+    if name != "大肥鱼":
+        p = p.replace("大肥鱼", name)
+    return p
+
+
 def owner_uid(platform: str = "") -> int:
     hx = int(CFG.get("fish.owner_uid_hlx", 0) or 0)
     lj = int(CFG.get("fish.owner_uid_lingjie", 0) or 0)
@@ -137,7 +146,7 @@ def _partner_doc(platform: str, uid: int, nick: str = "") -> str:
 
 
 def system_prompt(platform: str, uid: int = 0, nick: str = "", with_tools: bool = True) -> str:
-    persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
+    persona = persona_text()
     name = CFG.get("fish.name", "大肥鱼")
     tags = CFG.get("fish.tags", TAGS_DEFAULT)
     where = "葫芦侠三楼" if platform == "hlx" else "灵芥空间"
@@ -162,7 +171,7 @@ def catalog_text() -> str:
 
 
 def intent_prompt() -> str:
-    persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
+    persona = persona_text()
     return "\n".join([
         persona,
         mood_context(),
@@ -247,7 +256,7 @@ def random_reply_gap() -> float:
 def _choose(prompt: str, options: list[str], default: str,
             think: bool = False) -> tuple[str, str]:
     from .net import json_of
-    sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context()
+    sys = persona_text() + "\n" + mood_context()
     ask = (prompt + "\n可选：" + " / ".join(options) +
            '\n只输出一行 JSON：{"choice":"上面某一个选项","reason":"为什么这么选（一句话）"}')
     for _ in range(2):

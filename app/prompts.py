@@ -8,7 +8,7 @@ from .config import CFG
 def all_prompts() -> list[tuple[str, str]]:
     """返回 [(名称, 提示词全文), ...]。"""
     out = []
-    persona = CFG.get("fish.persona", "") or brain.DEFAULT_PERSONA
+    persona = brain.persona_text()
     out.append(("人设（共用）", persona))
     out.append(("人设补充（名字/标签/平台/心情/主人/记忆/好感）",
                 brain.system_prompt("hlx", 0, "", with_tools=False)))

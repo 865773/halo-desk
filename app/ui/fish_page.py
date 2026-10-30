@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QHBoxLayout, QLabel,
                                QVBoxLayout)
 
 from .. import imaging, memory, persona, publishing
+from .. import brain
 from ..config import CFG
 from ..debuglog import DBG
 from ..relations import REL, level
@@ -630,7 +631,8 @@ class FishPage(Page):
         self._render_chat()
 
     def _system_prompt(self) -> str:
-        persona_text = CFG.get("fish.persona", "") or persona.DEFAULT_PERSONA
+        persona_text = brain.persona_text()
+        name = CFG.get("fish.name", "大肥鱼") or "大肥鱼"
         mood = memory.get_mood()
         platforms = []
         if CFG.get("hlx.key", ""):
@@ -638,6 +640,7 @@ class FishPage(Page):
         if CFG.get("lingjie.token", ""):
             platforms.append("灵芥空间")
         parts = [persona_text,
+                 f"【你叫】{name}。别人问你叫什么，就回答「{name}」。",
                  f"【你现在的心情】{memory.mood_label(mood)}（{mood}/100）"]
         if platforms:
             parts.append("【你同时在线的社区】" + "、".join(platforms) +

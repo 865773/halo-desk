@@ -10,6 +10,7 @@ from PySide6.QtGui import QAction, QColor, QPainter, QPixmap
 from PySide6.QtWidgets import QLabel, QMenu, QWidget
 
 from .. import ai, memory, persona
+from .. import brain
 from ..config import CFG
 from ..paths import resource
 
@@ -244,7 +245,9 @@ class PetWindow(QWidget):
         self._place_bubble()
 
     def _system(self) -> str:
-        p = CFG.get("fish.persona", "") or persona.DEFAULT_PERSONA
+        p = brain.persona_text()
+        name = CFG.get("fish.name", "大肥鱼") or "大肥鱼"
+        p += f"\n【你叫】{name}。别人问你叫什么，就回答「{name}」。"
         mood = memory.get_mood()
         parts = [p, f"【心情】{memory.mood_label(mood)}（{mood}/100）"]
         mem = memory.recent(6)

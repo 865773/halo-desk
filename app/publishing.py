@@ -5,6 +5,7 @@ import time
 from typing import Optional
 
 from . import ai, imaging, memory
+from . import brain
 from .activity import record
 from .config import CFG
 from .debuglog import DBG
@@ -16,9 +17,9 @@ from .relations import REL
 
 def compose_post(board_name: str, hint: str) -> tuple[str, str]:
     """让模型写一条帖子，返回 (标题, 正文)。"""
-    from .persona import DEFAULT_PERSONA
-    persona = CFG.get("fish.persona", "") or DEFAULT_PERSONA
-    sys = (persona + "\n"
+    persona = brain.persona_text()
+    name = CFG.get("fish.name", "大肥鱼") or "大肥鱼"
+    sys = (persona + f"\n【你叫】{name}。\n"
            "你正在社区「" + board_name + "」发一条日常帖：像真人随手发动态，"
            "口语、自然，不要 AI 腔，不要 markdown。只输出一行 JSON："
            '{"title":"标题（20字内）","content":"正文（60-150字，可带[表情]）"}')
