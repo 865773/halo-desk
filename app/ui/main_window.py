@@ -164,21 +164,28 @@ class MainWindow(QMainWindow):
             cur.refresh()
 
     def _play_ding(self, *_a) -> None:
-        """收到消息的提示音（桌面的叮咚）。"""
+        """收到消息的提示音：原版叮咚 mp3，只响一次。"""
+        import os
         import time as _t
         now = _t.time()
-        if now - getattr(self, "_last_ding", 0) < 1.2:
+        if now - getattr(self, "_last_ding", 0) < 1.5:
             return
         self._last_ding = now
         try:
-            if getattr(self, "_ding", None) is None:
+            if getattr(self, "_ding_player", None) is None:
                 from PySide6.QtCore import QUrl
-                from PySide6.QtMultimedia import QSoundEffect
-                self._ding = QSoundEffect(self)
-                self._ding.setSource(QUrl.fromLocalFile(
-                    resource("assets/dingdong.wav")))
-                self._ding.setVolume(0.75)
-            self._ding.play()
+                from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+                self._ding_audio = QAudioOutput(self)
+                self._ding_audio.setVolume(0.8)
+                self._ding_player = QMediaPlayer(self)
+                self._ding_player.setAudioOutput(self._ding_audio)
+                p = resource("assets/dingdong.mp3")
+                if not os.path.exists(p):
+                    p = resource("assets/dingdong.wav")
+                self._ding_player.setSource(QUrl.fromLocalFile(p))
+            self._ding_player.stop()
+            self._ding_player.setPosition(0)
+            self._ding_player.play()
         except Exception:
             pass
 
@@ -276,7 +283,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.4 · 桌面合并版")
+        ver = QLabel("v9.5 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

@@ -16,11 +16,13 @@ class VideoSplash(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_DeleteOnClose, True)
+        self.setAttribute(Qt.WA_DeleteOnClose, False)
         self.setStyleSheet("background:#000;")
         self._done = False
 
         self.video = QVideoWidget(self)
+        self.video.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.video.setFocusPolicy(Qt.NoFocus)
         self.audio = QAudioOutput(self)
         self.audio.setVolume(0.75)
         self.player = QMediaPlayer(self)
@@ -80,9 +82,21 @@ class VideoSplash(QWidget):
         self.hint.move(20, 20)
 
     def _progress(self) -> None:
+        self._ticks = getattr(self, "_ticks", 0) + 1
+        if self._ticks > 250:          # 最长约 30 秒，避免解码卡住
+            self._finish()
+            return
         dur = self.player.duration() or 0
+        pos = self.player.position() or 0
         if dur > 0:
-            self.bar.setValue(int(self.player.position() * 1000 / dur))
+            self.bar.setValue(int(pos * 1000 / dur))
+            if pos >= dur - 200:
+                self._finish()
+                return
+        else:
+            self._noframe = getattr(self, "_noframe", 0) + 1
+            if self._noframe > 60:      # 3 秒还读不出时长，直接跳过
+                self._finish()
 
     def _status(self, status) -> None:
         if status in (QMediaPlayer.EndOfMedia, QMediaPlayer.InvalidMedia):
@@ -94,12 +108,25 @@ class VideoSplash(QWidget):
         self._done = True
         try:
             self._timer.stop()
+            self.player.mediaStatusChanged.disconnect()
+        except Exception:
+            pass
+        try:
             self.player.stop()
+            self.player.setVideoOutput(None)
+        except Exception:
+            pass
+        try:
+            self.video.hide()
         except Exception:
             pass
         self.hide()
+        # 等媒体回调退出后再通知主界面，避免删除对象时卡住
+        QTimer.singleShot(30, self._emit_finished)
+
+    def _emit_finished(self) -> None:
         self.finished.emit()
-        self.close()
+        self.deleteLater()
 
     def mousePressEvent(self, e: QMouseEvent) -> None:  # noqa: N802
         self._finish()

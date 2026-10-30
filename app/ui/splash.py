@@ -68,7 +68,7 @@ class Splash(QWidget):
             self._close_timer.stop()
             self.hide()
             self.finished.emit()
-            self.deleteLater()
+            QTimer.singleShot(30, self.deleteLater)
 
     def paintEvent(self, _e) -> None:  # noqa: N802
         p = QPainter(self)

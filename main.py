@@ -81,6 +81,10 @@ def main() -> int:
     video_splash = None
 
     def _show_main() -> None:
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(80, _really_show)
+
+    def _really_show() -> None:
         win.show()
         win.raise_()
         win.activateWindow()
