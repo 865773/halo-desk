@@ -85,7 +85,10 @@ def main() -> int:
         QTimer.singleShot(80, _really_show)
 
     def _really_show() -> None:
+        from PySide6.QtCore import Qt
         win.setWindowOpacity(0.0)
+        # 启动时短暂置顶，避免别的窗口压在刚启动的 app 上面
+        win.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         win.show()
         win.raise_()
         win.activateWindow()
@@ -99,6 +102,19 @@ def main() -> int:
             win._fade_anim = anim
         except Exception:
             win.setWindowOpacity(1.0)
+
+        def _drop_top() -> None:
+            try:
+                win.setWindowFlag(Qt.WindowStaysOnTopHint, False)
+                win._rounded = False
+                win.show()
+                win.raise_()
+                win.activateWindow()
+            except Exception:
+                pass
+
+        from PySide6.QtCore import QTimer as _QT
+        _QT.singleShot(900, _drop_top)
         if CFG.get("general.first_run", True) and "--selftest" not in sys.argv:
             from PySide6.QtCore import QTimer
             from app.ui.wizard import Wizard

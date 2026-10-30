@@ -242,8 +242,25 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, e) -> None:  # noqa: N802
         super().showEvent(e)
+        if not getattr(self, "_rounded", False):
+            self._rounded = True
+            self._apply_round_corners()
         self._position_window_controls()
         QTimer.singleShot(0, self._position_window_controls)
+
+    def _apply_round_corners(self) -> None:
+        """Win11 圆角；不支持的系统保持直角。"""
+        try:
+            import ctypes
+            import sys as _sys
+            if not _sys.platform.startswith("win"):
+                return
+            v = ctypes.c_int(2)  # DWMWCP_ROUND
+            hwnd = int(self.winId())
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 33, ctypes.byref(v), ctypes.sizeof(v))
+        except Exception:
+            pass
 
     def resizeEvent(self, e) -> None:  # noqa: N802
         super().resizeEvent(e)
@@ -383,7 +400,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v10.0 · 桌面合并版")
+        ver = QLabel("v10.1 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side
