@@ -5,7 +5,11 @@ build/
 __pycache__/
 *.pyc
 *.log
-*.png
 ._MEI*
 .verify*/
 .uitest*/
+
+# 图片默认不进仓库，但界面预览图和程序素材要进
+*.png
+!assets/**/*.png
+!docs/*.png
