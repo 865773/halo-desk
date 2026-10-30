@@ -1,4 +1,4 @@
-version=10.14
+version=10.13
 update_force=1
 announcement=请前往项目地址更新最新版本
 announcement_force=0
