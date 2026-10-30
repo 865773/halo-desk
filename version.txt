@@ -1,6 +1,6 @@
 version=10.13
 update_force=1
-announcement=请前往项目地址更新最新版本
+announcement=
 announcement_force=0
 download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.13/HaloDesk.exe
 notes=
