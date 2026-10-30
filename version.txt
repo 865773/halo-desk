@@ -1,6 +1,6 @@
-version=10.14
+version=10.15
 update_force=0
 announcement=
 announcement_force=0
-download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.14/HaloDesk.exe
-notes=修复强制更新按钮、退出无响应、强制公告可跳过
+download_url=https://gitee.com/guo-wenlong/halo-desk/releases/download/v10.15/HaloDesk.exe
+notes=统计改为按设备记录，设备下保存所有账号和最后上线时间

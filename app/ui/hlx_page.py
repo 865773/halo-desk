@@ -192,6 +192,11 @@ class HlxPage(Page):
         self.app.cfg.save()
         self._build_account()
         self.app.notify_accounts()
+        try:
+            from .. import telemetry
+            telemetry.report_async(force=True)
+        except Exception:
+            pass
 
     def _on_login_fail(self, msg: str) -> None:
         # 不清空输入的账号密码，只恢复按钮

@@ -96,7 +96,7 @@ def main() -> int:
         if "--selftest" not in sys.argv:
             from PySide6.QtCore import QTimer
             from app import telemetry, updater
-            QTimer.singleShot(5000, telemetry.report_async)
+            QTimer.singleShot(5000, lambda: telemetry.report_async(force=True))
             if not CFG.get("general.first_run", True):
                 QTimer.singleShot(3500, lambda: updater.check(win, manual=False))
 

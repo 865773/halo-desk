@@ -206,6 +206,11 @@ class LingjiePage(Page):
         self._build_account()
         self.app.notify_accounts()
         self.load_status()
+        try:
+            from .. import telemetry
+            telemetry.report_async(force=True)
+        except Exception:
+            pass
 
     def _on_login_fail(self, msg: str) -> None:
         self.login_btn.setEnabled(True)
