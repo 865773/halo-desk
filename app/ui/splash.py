@@ -73,7 +73,12 @@ class Splash(QWidget):
         self.update()
         if self._tick >= self._total:
             self._close_timer.stop()
-            self._grow()
+            # 先停一下，再用很短的动画放大，避免看见明显的拉伸
+            self._grow_delay = QTimer(self)
+            self._grow_delay.setSingleShot(True)
+            self._grow_delay.setInterval(900)
+            self._grow_delay.timeout.connect(self._grow)
+            self._grow_delay.start()
 
     def _grow(self) -> None:
         """把小启动页放大到开场视频的窗口大小，再交给视频。"""
@@ -81,10 +86,10 @@ class Splash(QWidget):
             self._done()
             return
         self._anim = QPropertyAnimation(self, b"geometry", self)
-        self._anim.setDuration(260)
+        self._anim.setDuration(110)
         self._anim.setStartValue(self.geometry())
         self._anim.setEndValue(self._target)
-        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim.setEasingCurve(QEasingCurve.OutQuint)
         self._anim.finished.connect(self._done)
         self._anim.start()
 
