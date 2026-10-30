@@ -141,6 +141,7 @@ def filter_hlx(datas: list[dict], my_uid: int, seen: set[int],
         if isinstance(post, dict):
             title = post.get("title", "") or ""
         out.append({"cid": cid, "pid": pid, "text": text, "ct": ct,
+                    "seq": _as_int(c.get("seq")),
                     "uid": from_uid, "nick": nick or f"uid={from_uid}",
                     "title": title})
     out.sort(key=lambda x: x["ct"], reverse=True)
@@ -667,6 +668,7 @@ class AutoPilot(QObject):
                 from . import capabilities
                 ctx = {"post_id": c.get("pid") or c.get("tid"),
                        "comment_id": int(c.get("cid") or 0),
+                       "comment_seq": int(c.get("seq") or 0),
                        "author_uid": c.get("uid", 0),
                        "title": c.get("title", ""), "board": c.get("board", "")}
                 # 先根据对方说的话调整心情

@@ -141,6 +141,9 @@ class FakeHlx:
     def comment_author(self, pid, cid, pages=3):
         return 60
 
+    def comment_author_by_seq(self, pid, seq, pages=3):
+        return 60
+
     def signin(self, cat):
         self.writes.append(("signin", {"cat": cat}))
         return True, ""
@@ -558,6 +561,16 @@ def main() -> int:
     ctips = [w for w in ht2.writes if w[0] == "tip_comment"]
     check("葫芦侠回复场景会打赏评论而不是帖子",
           bool(rc.get("done")) and bool(ctips), ctips)
+
+    ht3 = FakeHlx()
+    rs = execute("tip_post", "hlx", ht3, {"kind": "current", "uid": 60},
+                 {"reason": "楼层打赏", "score": 1},
+                 ctx={"post_id": 123, "comment_id": 456, "comment_seq": 42,
+                      "title": "测试帖"})
+    stips = [w for w in ht3.writes if w[0] == "tip_comment"]
+    check("葫芦侠打赏评论使用楼层号 seq",
+          bool(rs.get("done")) and bool(stips) and stips[0][1]["cid"] == 42,
+          stips)
 
     # ---------- 7.12 发帖板块锁死 / 形象配图 ----------
     class _FB:

@@ -496,10 +496,14 @@ def execute(action: str, platform: str, client, target: dict | None,
                 score = 1       # 和手机端一致：不是主人只送 1 个
             why = _safe_tip_text(payload.get("content") or "")
             cid = int((ctx or {}).get("comment_id", 0) or 0)
-            if cid:
-                # 先确认这条评论的作者就是消息发送者，避免引用链/旧帖评论被误打赏
+            seq = int((ctx or {}).get("comment_seq", 0) or 0)
+            if seq or cid:
+                # 葫芦侠 /credits/transfer 的 comment_id 实际按「楼层序号 seq」解析；
+                # 传全局 commentID 会越界，服务端回落到第 1 楼（旧评论）。
+                target_no = seq or cid
                 try:
-                    author = client.comment_author(pid, cid)
+                    author = (client.comment_author_by_seq(pid, seq)
+                              if seq else client.comment_author(pid, cid))
                 except Exception:
                     author = 0
                 want = int((ctx or {}).get("author_uid", 0) or 0)
@@ -507,11 +511,11 @@ def execute(action: str, platform: str, client, target: dict | None,
                     res["msg"] = "打赏对象对不上，已取消（避免送错人）"
                     res.update(done=done, ok=False)
                     return res
-                if not author:
+                if not seq and not author:
                     res["msg"] = "找不到要打赏的评论，已取消（避免送错人）"
                     res.update(done=done, ok=False)
                     return res
-                ok, _m = client.tip_comment(pid, cid, score, why)
+                ok, _m = client.tip_comment(pid, target_no, score, why)
             else:
                 ok, _m = client.tip(pid, score, why)
         else:

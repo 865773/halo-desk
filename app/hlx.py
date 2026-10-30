@@ -416,6 +416,19 @@ class HlxClient:
                     return int(ref.get("userID", 0) or 0)
         return 0
 
+    def comment_author_by_seq(self, post_id: int, seq: int,
+                              pages: int = 3) -> int:
+        """按楼层号确认评论作者；葫芦侠打赏实际认 seq，不是全局 commentID。"""
+        want = int(seq or 0)
+        if not want:
+            return 0
+        for page in range(1, max(1, pages) + 1):
+            for c in self.comments(post_id, page):
+                if int(c.get("seq", 0) or 0) == want:
+                    u = c.get("user") or {}
+                    return int((u or {}).get("userID", 0) or 0)
+        return 0
+
     def tip(self, post_id: int, score: int, text: str) -> tuple[bool, str]:
         """给帖子送葫芦。"""
         import re as _re
