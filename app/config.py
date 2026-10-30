@@ -174,6 +174,7 @@ DEFAULTS: dict = {
         "max_per_pass": 3,
         "loop_guard": True,
         "bot_skip_days": 30,
+        "bot_reply_min": 60,
         "loop_limit": 7,
         "loop_window_min": 10,
         "loop_gap_sec": 25,

@@ -42,8 +42,8 @@ class _WallRoot(QWidget):
             x = (self.width() - scaled.width()) // 2
             y = (self.height() - scaled.height()) // 2
             p.drawPixmap(x, y, scaled)
-            # 白色柔化层，保证文字和按钮在任何壁纸上都看得清
-            p.fillRect(self.rect(), QColor(255, 255, 255, 150))
+            # 轻微压暗，保证白色文字在亮部也看得清
+            p.fillRect(self.rect(), QColor(4, 10, 24, 60))
         else:
             p.fillRect(self.rect(), theme.BG2)
         p.end()
@@ -305,7 +305,7 @@ class MainWindow(QMainWindow):
         self.side_status.setObjectName("hint")
         self.side_status.setWordWrap(True)
         v.addWidget(self.side_status)
-        ver = QLabel("v9.7 · 桌面合并版")
+        ver = QLabel("v9.8 · 桌面合并版")
         ver.setObjectName("hint")
         v.addWidget(ver)
         return side

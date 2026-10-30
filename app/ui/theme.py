@@ -23,6 +23,20 @@ DARK = {
     "SCROLL_HOVER": "#34507A", "BTN_PRESS": "#1A2943", "DISABLED": "#5B6E8C",
 }
 
+# 流光壁纸：深色液态玻璃面板，背景保持清晰
+WALLPAPER = {
+    "BG": "rgba(8,14,28,0.58)", "BG2": "rgba(8,14,28,0.35)",
+    "CARD": "rgba(255,255,255,0.10)", "CARD2": "rgba(255,255,255,0.07)",
+    "LINE": "rgba(255,255,255,0.18)", "TEXT": "#F4F8FF", "MUTED": "#C6D4EC",
+    "ACCENT": "#4F8CFF", "ACCENT2": "#6AA4FF", "OK": "#34D399",
+    "WARN": "#FBBF24", "ERR": "#F87171",
+    "FIELD": "rgba(6,12,26,0.55)", "HOVER": "rgba(255,255,255,0.14)",
+    "NAV_HOVER": "rgba(255,255,255,0.10)", "NAV_ACTIVE": "rgba(79,140,255,0.28)",
+    "SEL": "rgba(79,140,255,0.32)", "SCROLL": "rgba(255,255,255,0.28)",
+    "SCROLL_HOVER": "rgba(255,255,255,0.45)", "BTN_PRESS": "rgba(255,255,255,0.20)",
+    "DISABLED": "rgba(255,255,255,0.35)",
+}
+
 P = dict(LIGHT)
 WALL = False
 BG = P["BG"]; BG2 = P["BG2"]; CARD = P["CARD"]; CARD2 = P["CARD2"]
@@ -213,7 +227,7 @@ def apply(app, mode: str | None = None, dark: bool | None = None) -> None:
     if mode is None:
         mode = "dark" if (dark if dark is not None else is_dark()) else "light"
     if mode == "wallpaper":
-        _set_globals(LIGHT)
+        _set_globals(WALLPAPER)
         WALL = True
     elif mode == "dark":
         _set_globals(DARK)

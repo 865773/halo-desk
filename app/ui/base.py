@@ -51,5 +51,16 @@ class Page(QWidget):
             vp.setPalette(pal)
         outer.addWidget(area, 1)
 
+    def paintEvent(self, _e) -> None:  # noqa: N802
+        if getattr(theme, "WALL", False):
+            from PySide6.QtGui import QColor, QPainter
+            p = QPainter(self)
+            p.setRenderHint(QPainter.Antialiasing, True)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(8, 16, 32, 120))
+            p.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 18, 18)
+            p.end()
+        super().paintEvent(_e)
+
     def refresh(self) -> None:  # pragma: no cover - 由子类覆盖
         pass

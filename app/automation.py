@@ -628,11 +628,16 @@ class AutoPilot(QObject):
                 try:
                     from . import bots
                     if bots.is_bot(platform, c.get("uid", 0)):
-                        if c["cid"] not in self.state[seen_key]:
-                            self.state[seen_key].append(c["cid"])
-                        _save_state(self.state)
-                        DBG.log("BOT", f"疑似机器人 {c.get('nick') or c.get('uid')}，跳过")
-                        continue
+                        gap_min = int(CFG.get("auto.bot_reply_min", 60) or 60)
+                        last_bot = float(self.state.get(
+                            f"bot_last_{platform}_{c.get('uid', 0)}", 0) or 0)
+                        if time.time() - last_bot < gap_min * 60:
+                            if c["cid"] not in self.state[seen_key]:
+                                self.state[seen_key].append(c["cid"])
+                            _save_state(self.state)
+                            DBG.log("BOT", f"疑似机器人 {c.get('nick') or c.get('uid')}，"
+                                            f"降低回复频率，跳过")
+                            continue
                 except Exception:
                     pass
                 try:
@@ -712,6 +717,7 @@ class AutoPilot(QObject):
                     if platform == "lingjie" and c.get("key"):
                         self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
                                                  + [c["key"]])[-500:]
+                    self.state[f"bot_last_{platform}_{c.get('uid', 0)}"] = time.time()
                     self._loop_note(platform, c.get("uid", 0), c.get("nick", ""))
                     _save_state(self.state)
                     done += 1

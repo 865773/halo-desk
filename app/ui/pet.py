@@ -90,7 +90,7 @@ class PetWindow(QWidget):
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
-        self._timer.start(33)
+        self._timer.start(50)
         self._scaled = None
         self._scaled_key = None
         self._apply_size()
@@ -161,7 +161,7 @@ class PetWindow(QWidget):
         seq = self._frames.get(self._cur) or []
         if seq:
             self._fcount += 1
-            if self._fcount % 2 == 0:
+            if self._fcount % 3 == 0:
                 self._fi = (self._fi + 1) % len(seq)
                 self._pix = seq[self._fi]
                 self._scaled = None
