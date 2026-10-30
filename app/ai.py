@@ -35,6 +35,13 @@ def model_vision() -> str:
     return CFG.get("ai.model_vision", "") or model_basic()
 
 
+def model_think() -> str:
+    """只给少数决策/压缩用的深度思考模型；留空就用日常模型。"""
+    if is_custom():
+        return CFG.get("ai.custom_think", "") or model_basic()
+    return CFG.get("ai.think_model", "") or model_basic()
+
+
 def _headers() -> dict:
     key = api_key()
     if not key:

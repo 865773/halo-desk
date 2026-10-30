@@ -214,6 +214,11 @@ class SettingsPage(Page):
         cb_lay.addWidget(common.button("一键填入阿里云", ghost=True,
                                        on_click=self._fill_ai_aliyun))
         ai.box.addWidget(self.custom_box)
+        self.think_model = QLineEdit(CFG.get("ai.think_model", ""))
+        self.think_model.setPlaceholderText(
+            "深度思考模型（可选）：只用于逛社区决策、长记忆压缩；留空=不用")
+        self.think_model.editingFinished.connect(self._save_ai)
+        ai.box.addWidget(self.think_model)
         self._sync_ai_boxes()
         trow = QHBoxLayout()
         trow.addWidget(common.button("测试 AI", primary=True, on_click=self._test_ai))
@@ -555,6 +560,7 @@ class SettingsPage(Page):
         self.ai_ckey.setText(CFG.get("ai.custom_key", ""))
         self.ai_cmodel.setText(CFG.get("ai.custom_model", ""))
         self.ai_cvision.setText(CFG.get("ai.custom_vision", ""))
+        self.think_model.setText(CFG.get("ai.think_model", ""))
         cur = CFG.get("fish.img_proto", "dashscope")
         self.img_proto.setCurrentIndex(max(0, self.img_proto.findData(cur)))
         self.img_url.setText(CFG.get("fish.img_url", ""))
@@ -619,6 +625,7 @@ class SettingsPage(Page):
         CFG.set("ai.custom_key", self.ai_ckey.text().strip())
         CFG.set("ai.custom_model", self.ai_cmodel.text().strip())
         CFG.set("ai.custom_vision", self.ai_cvision.text().strip())
+        CFG.set("ai.think_model", self.think_model.text().strip())
         CFG.save()
 
     def _test_ai(self) -> None:

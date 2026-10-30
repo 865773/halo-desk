@@ -106,6 +106,8 @@ DEFAULTS: dict = {
         "custom_key": "",
         "custom_model": "gpt-4o-mini",
         "custom_vision": "",
+        "think_model": "",
+        "custom_think": "",
         "model_basic": "deepseek-chat",
         "model_smart": "deepseek-reasoner",
         "model_vision": "deepseek-chat",

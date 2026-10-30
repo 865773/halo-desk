@@ -228,7 +228,7 @@ def compress(path, kind: str = "general", keep_ratio: float = 0.55,
             "把你下面的记忆压缩成一段，最多 " + str(keep) + " 字。"
             "只保留关键节点：人物和称呼、重要事件、喜好与厌恶、约定过的事、最近发生的事；"
             "删掉重复和寒暄，用「；」分隔，不要编号、不要解释。",
-            raw, CFG.get("ai.model_basic"))
+            raw, ai.model_think())
         out = " ".join((txt or "").split())
         if not out:
             return False

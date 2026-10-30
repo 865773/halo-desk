@@ -244,14 +244,15 @@ def random_reply_gap() -> float:
 
 # ---------------- 分层决策（每层都给理由） ----------------
 
-def _choose(prompt: str, options: list[str], default: str) -> tuple[str, str]:
+def _choose(prompt: str, options: list[str], default: str,
+            think: bool = False) -> tuple[str, str]:
     from .net import json_of
     sys = (CFG.get("fish.persona", "") or DEFAULT_PERSONA) + "\n" + mood_context()
     ask = (prompt + "\n可选：" + " / ".join(options) +
            '\n只输出一行 JSON：{"choice":"上面某一个选项","reason":"为什么这么选（一句话）"}')
     for _ in range(2):
         try:
-            raw = ai.ask(sys, ask, CFG.get("ai.model_basic"))
+            raw = ai.ask(sys, ask, ai.model_think() if think else None)
         except Exception as e:
             DBG.log("BRAIN", f"分层决策失败：{e}", "ERROR")
             break
@@ -280,7 +281,7 @@ def choose_community(available: list[str]) -> tuple[str, str]:
             ask += f"（最近去{more}比较多，这次去{less}会更有新鲜感）"
     except Exception:
         pass
-    choice, why = _choose(ask, opts, opts[0] if opts else "")
+    choice, why = _choose(ask, opts, opts[0] if opts else "", think=True)
     for k, v in names.items():
         if v == choice:
             return k, why
@@ -302,7 +303,7 @@ def choose_board(platform: str, boards: list[tuple[int, str]],
     choice, why = _choose(
         f"你在{'葫芦侠三楼' if platform == 'hlx' else '灵芥空间'}，"
         f"现在挑一个板块去逛。可选板块：{listing}",
-        [n for _, n in cands[:20]], cands[0][1])
+        [n for _, n in cands[:20]], cands[0][1], think=True)
     for i, n in cands:
         if n == choice:
             return i, n, why
@@ -310,7 +311,7 @@ def choose_board(platform: str, boards: list[tuple[int, str]],
 
 
 def choose_count() -> tuple[int, str]:
-    choice, why = _choose("这次你打算看几个帖子？", ["1", "2", "3"], "2")
+    choice, why = _choose("这次你打算看几个帖子？", ["1", "2", "3"], "2", think=True)
     try:
         return max(1, min(3, int(choice))), why
     except Exception:
@@ -321,7 +322,7 @@ def choose_switch(board_name: str) -> tuple[str, str]:
     """看完一个帖子后的去向：换板块 / 换社区 / 继续。"""
     choice, why = _choose(
         f"你在「{board_name}」看完一个帖子了，接下来想：",
-        ["换板块", "换社区", "继续逛这个板块"], "换板块")
+        ["换板块", "换社区", "继续逛这个板块"], "换板块", think=True)
     mapping = {"换板块": "switch_board", "换社区": "switch_community",
                "继续逛这个板块": "stay"}
     return mapping.get(choice, "switch_board"), why
@@ -333,5 +334,5 @@ def choose_focus(platform: str, owner_uid: int) -> tuple[str, str]:
         return "browse", ""
     choice, why = _choose(
         "你打开社区了，先干嘛？",
-        ["先看看主人有没有发新帖", "随便逛逛"], "随便逛逛")
+        ["先看看主人有没有发新帖", "随便逛逛"], "随便逛逛", think=True)
     return ("owner" if choice.startswith("先看看") else "browse"), why
