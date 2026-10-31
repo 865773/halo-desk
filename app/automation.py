@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 
 from . import ai, brain, memory
 from .activity import ACT, record
+from .authwords import is_restricted
 from .config import CFG, FILES_DIR
 from .debuglog import DBG
 from .hlx import HlxClient
@@ -284,6 +285,7 @@ class AutoPilot(QObject):
     replied = Signal(str, str, str)   # platform, nick, text
     incoming = Signal(str, str, str)  # platform, nick, message
     auth_failed = Signal(str)         # platform
+    account_notice = Signal(str, str)  # platform, 服务端原始提示
     state_changed = Signal()
 
     def __init__(self, app):
@@ -294,6 +296,7 @@ class AutoPilot(QObject):
         self.state = _load_state()
         self._busy = False
         self._auth_hits = {}
+        self._restricted = {}
 
         # 消息监听：默认 10 秒一轮（和 Android 版一致）
         self.poll_timer = QTimer(self)
@@ -595,6 +598,11 @@ class AutoPilot(QObject):
                     if _cnt >= 2:
                         self._auth_hits[_p] = (0, 0)
                         self.auth_failed.emit(_p)
+            _until, _block_msg = self._restricted.get(platform, (0, ""))
+            if time.time() < _until:
+                return
+            if _block_msg:
+                self._restricted.pop(platform, None)
             since = int(self.state.get("connect_ts", 0) or 0)
             if platform == "hlx":
                 if not CFG.get("hlx.key", ""):
@@ -732,6 +740,12 @@ class AutoPilot(QObject):
                 _save_state(self.state)
                 ok, msg = self._send_reply(platform, c, text or "嗯嗯")
                 if ok:
+                    if self._restricted.pop(platform, None):
+                        try:
+                            CFG.set(f"{platform}.notice", "")
+                            CFG.save()
+                        except Exception:
+                            pass
                     if platform == "lingjie" and c.get("key"):
                         self.state["lj_keys"] = (list(self.state.get("lj_keys", []))
                                                  + [c["key"]])[-500:]
@@ -769,18 +783,34 @@ class AutoPilot(QObject):
                            action=act, reason=why)
                     self.replied.emit(platform, c["nick"], text)
                 else:
-                    # 失败：回滚乐观标记，下一轮还能重试
-                    try:
-                        self.state[seen_key] = [x for x in self.state[seen_key]
-                                                if x != c["cid"]]
-                        self.state["reply_keys"] = [x for x in self.state.get("reply_keys", [])
-                                                    if x != rkey]
-                        _save_state(self.state)
-                    except Exception:
-                        pass
-                    report["errors"].append(f"{platform} 回复 {c['nick']} 失败：{msg}")
-                    if is_auth_error(msg):
-                        self.auth_failed.emit(platform)
+                    if is_restricted(msg):
+                        # 锁定/禁言/禁止回复：保留乐观标记，不重试这条；
+                        # 10 分钟内不再碰这个平台，并把服务端原话显示在已登录状态里。
+                        self._restricted[platform] = (time.time() + 600, msg)
+                        try:
+                            CFG.set(f"{platform}.notice", msg)
+                            CFG.save()
+                        except Exception:
+                            pass
+                        self.account_notice.emit(platform, msg)
+                        report["errors"].append(
+                            f"{platform} 账号受限，暂停回复：{msg}")
+                        DBG.log("REPLY", f"{platform} 账号受限，暂停 10 分钟：{msg}",
+                                "WARN")
+                    else:
+                        # 网络/临时失败：回滚乐观标记，下一轮可以重试
+                        try:
+                            self.state[seen_key] = [x for x in self.state[seen_key]
+                                                    if x != c["cid"]]
+                            self.state["reply_keys"] = [
+                                x for x in self.state.get("reply_keys", [])
+                                if x != rkey]
+                            _save_state(self.state)
+                        except Exception:
+                            pass
+                        report["errors"].append(f"{platform} 回复 {c['nick']} 失败：{msg}")
+                        if is_auth_error(msg):
+                            self.auth_failed.emit(platform)
         except Exception as e:  # noqa: BLE001
             report["errors"].append(f"{platform} 监听失败：{e}")
             if is_auth_error(e):

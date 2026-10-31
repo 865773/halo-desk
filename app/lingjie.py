@@ -7,7 +7,7 @@ import time
 from typing import Callable, Optional
 
 from . import net
-from .authwords import is_auth_bad
+from .authwords import is_login_bad
 from .config import CFG
 from .debuglog import DBG
 
@@ -92,7 +92,7 @@ class LingjieClient:
 
     def _note_auth(self, obj: dict) -> None:
         msg = str(obj.get("msg") or obj.get("message") or "")
-        if is_auth_bad(msg):
+        if is_login_bad(msg):
             self.auth_issue = msg
 
     @staticmethod
@@ -163,7 +163,7 @@ class LingjieClient:
             return "invalid", "未登录"
         st = self.sign_status(1)
         msg = str(st.get("msg") or st.get("message") or "")
-        if is_auth_bad(msg):
+        if is_login_bad(msg):
             return "blocked", msg
         if self._ok(st) or bool(st.get("data")):
             return "ok", ""

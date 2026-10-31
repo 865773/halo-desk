@@ -7,7 +7,7 @@ import time
 from typing import Callable, Optional
 
 from . import net
-from .authwords import is_auth_bad
+from .authwords import is_login_bad
 from .config import CFG
 from .debuglog import DBG
 
@@ -90,7 +90,7 @@ class HlxClient:
     def _json(self, text: str) -> dict:
         obj = net.json_of(text)
         msg = str(obj.get("msg") or "")
-        if is_auth_bad(msg):
+        if is_login_bad(msg):
             self.auth_issue = msg
         return obj
 
@@ -141,11 +141,11 @@ class HlxClient:
         obj = self._json(self._get(f"{BASE}/user/status/ANDROID/2.1?{self.auth()}"))
         st = int(obj.get("status", 0) or 0)
         msg = str(obj.get("msg") or "")
-        if is_auth_bad(msg):
+        if is_login_bad(msg):
             return "blocked", msg
         if st == 1:
             return "ok", ""
-        if is_auth_bad(msg):
+        if is_login_bad(msg):
             return "invalid", msg
         return "unknown", msg or f"status={st}"
 

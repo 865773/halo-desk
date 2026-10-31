@@ -177,6 +177,7 @@ class MainWindow(QMainWindow):
         self.autopilot.incoming.connect(self._on_pet_incoming)
         self.autopilot.incoming.connect(self._play_ding)
         self.autopilot.auth_failed.connect(self._on_auth_failed)
+        self.autopilot.account_notice.connect(self._on_account_notice)
         self.show_page("home")
         self._refresh_sidebar_status()
         QTimer.singleShot(1200, self._auto_signin)
@@ -364,7 +365,13 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         CFG.save()
+        try:
+            CFG.set(f"{platform}.notice", "")
+            CFG.save()
+        except Exception:
+            pass
         self.notify_accounts()
+        self._refresh_sidebar_status()
         try:
             self.tray.showMessage("登录已失效",
                                   f"{name} 登录已失效，请重新登录（记忆会保留）。",
@@ -493,10 +500,33 @@ class MainWindow(QMainWindow):
         if hasattr(cur, "refresh") and cur is not self.pages["home"]:
             cur.refresh()
 
+    def _on_account_notice(self, platform: str, msg: str) -> None:
+        """账号仍登录，但被锁定/禁言：显示服务端原话，方便知道原因。"""
+        name = "葫芦侠" if platform == "hlx" else "灵芥"
+        try:
+            CFG.set(f"{platform}.notice", msg)
+            CFG.save()
+        except Exception:
+            pass
+        self._refresh_sidebar_status()
+        try:
+            self.tray.showMessage(f"{name} 账号受限", msg,
+                                  QSystemTrayIcon.Warning, 6000)
+        except Exception:
+            pass
+        DBG.log("LOGIN", f"{name} 账号受限（仍保持登录）：{msg}", "WARN")
+
     def _refresh_sidebar_status(self) -> None:
-        hlx = "葫芦侠 已登录" if CFG.get("hlx.key", "") else "葫芦侠 未登录"
-        lj = "灵芥 已登录" if CFG.get("lingjie.token", "") else "灵芥 未登录"
-        self.side_status.setText(f"{hlx}\n{lj}")
+        parts = []
+        for key, label, logged in (
+                ("hlx", "葫芦侠", bool(CFG.get("hlx.key", ""))),
+                ("lingjie", "灵芥", bool(CFG.get("lingjie.token", "")))):
+            if not logged:
+                parts.append(f"{label} 未登录")
+                continue
+            note = str(CFG.get(f"{key}.notice", "") or "").strip()
+            parts.append(f"{label} 已登录" + (f" · {note[:18]}" if note else ""))
+        self.side_status.setText("\n".join(parts))
 
     # ---------- 挂件 ----------
     def open_pet(self, on: bool | None = None) -> None:

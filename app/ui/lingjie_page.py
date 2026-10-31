@@ -201,6 +201,8 @@ class LingjiePage(Page):
         else:
             self.app.cfg.set("lingjie.password", "")
         self.app.cfg.save()
+        self.app.cfg.set("lingjie.notice", "")
+        self.app.cfg.save()
         nick = self.app.cfg.get("lingjie.nickname", "") or (info or {}).get("nickname", "")
         common.toast(self.app, f"登录成功，欢迎 {nick}", "ok")
         self._build_account()

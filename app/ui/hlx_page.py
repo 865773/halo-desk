@@ -190,6 +190,8 @@ class HlxPage(Page):
         if not remember:
             self.app.cfg.set("hlx.password", "")
         self.app.cfg.save()
+        self.app.cfg.set("hlx.notice", "")
+        self.app.cfg.save()
         self._build_account()
         self.app.notify_accounts()
         try:
